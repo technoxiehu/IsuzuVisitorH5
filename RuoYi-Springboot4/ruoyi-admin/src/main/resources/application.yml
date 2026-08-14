@@ -73,7 +73,7 @@ spring:
     host: smtp.qiye.163.com
     port: 465
     username: xiehu@jx-isuzuengine.com
-    password: Isuzu0791
+    password: Isuzu111111111111
     properties:
       mail:
         from: xiehu@jx-isuzuengine.com

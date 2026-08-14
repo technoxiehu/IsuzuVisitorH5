@@ -19,6 +19,9 @@ public class ApproveDetailVo
     /** 申请人单位 */
     private String visitorCompany;
 
+    /** 申请人头像（相对路径 /profile/...，同源解析） */
+    private String visitorAvatar;
+
     /** 被访问人 */
     private String hostName;
 
@@ -68,6 +71,16 @@ public class ApproveDetailVo
     public void setVisitorCompany(String visitorCompany)
     {
         this.visitorCompany = visitorCompany;
+    }
+
+    public String getVisitorAvatar()
+    {
+        return visitorAvatar;
+    }
+
+    public void setVisitorAvatar(String visitorAvatar)
+    {
+        this.visitorAvatar = visitorAvatar;
     }
 
     public String getHostName()

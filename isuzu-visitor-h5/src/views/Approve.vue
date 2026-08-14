@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { approve, getApproveDetail } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
+import { toAvatarUrl } from '@/utils/avatar'
 
 defineOptions({ name: 'ApproveView' })
 
@@ -71,9 +72,15 @@ async function onApprove(action) {
     <template v-else-if="detail">
       <h2 class="page-title">访客申请审批</h2>
       <div class="page-card">
+        <!-- 申请人信息（头像居中醒目展示，帮助被访问人确认身份） -->
+        <div class="visitor-header">
+          <van-image round width="120" height="120" :src="toAvatarUrl(detail.visitorAvatar)" fit="cover">
+            <template #error><van-icon name="user-o" size="72" /></template>
+          </van-image>
+          <div class="visitor-name">{{ detail.visitorName || '—' }}</div>
+          <div class="visitor-company">{{ detail.visitorCompany || '' }}</div>
+        </div>
         <van-cell-group inset>
-          <van-cell title="申请人" :value="detail.visitorName || '—'" />
-          <van-cell title="申请人单位" :value="detail.visitorCompany || '—'" />
           <van-cell title="被访问人" :value="detail.hostName || '—'" />
           <van-cell title="开始时间" :value="formatDateTime(new Date(detail.startTime.replace(' ', 'T')))" />
           <van-cell title="结束时间" :value="formatDateTime(new Date(detail.endTime.replace(' ', 'T')))" />
@@ -106,6 +113,27 @@ async function onApprove(action) {
 .finished-title {
   margin-top: 12px;
   color: var(--color-text);
+}
+
+.visitor-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 16px;
+}
+
+.visitor-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: 12px;
+}
+
+.visitor-company {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
 }
 
 .action-row {

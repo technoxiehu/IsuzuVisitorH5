@@ -69,17 +69,18 @@ spring:
       # 热部署开关
       enabled: true
   # 邮件配置（访客审批邮件，占位：SMTP 信息确定后取消注释；未配置时系统正常启动，邮件发送跳过并记录日志）
-  # mail:
-  #   host: smtp.xxx.com
-  #   port: 465
-  #   username: xxx
-  #   password: xxx
-  #   properties:
-  #     mail:
-  #       smtp:
-  #         auth: true
-  #         ssl:
-  #           enable: true
+  mail:
+    host: smtp.qiye.163.com
+    port: 465
+    username: xiehu@jx-isuzuengine.com
+    password: Isuzu0791
+    properties:
+      mail:
+        from: xiehu@jx-isuzuengine.com
+        smtp:
+          auth: true
+          ssl:
+            enable: true
   data:
     # redis 配置
     redis:

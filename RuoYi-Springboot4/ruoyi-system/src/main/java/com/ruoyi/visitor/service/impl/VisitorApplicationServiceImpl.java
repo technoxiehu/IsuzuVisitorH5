@@ -179,6 +179,7 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         {
             detail.setVisitorName(visitor.getName());
             detail.setVisitorCompany(visitor.getCompany());
+            detail.setVisitorAvatar(visitor.getAvatar());
         }
         return detail;
     }

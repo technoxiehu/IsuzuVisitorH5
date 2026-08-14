@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.visitor.mapper.VisitorApplicationMapper">
+
+    <resultMap type="VisitorApplication" id="VisitorApplicationResult">
+        <id     property="applicationId" column="application_id" />
+        <result property="visitorId"     column="visitor_id"     />
+        <result property="hostId"        column="host_id"        />
+        <result property="hostName"      column="host_name"      />
+        <result property="startTime"     column="start_time"     />
+        <result property="endTime"       column="end_time"       />
+        <result property="reason"        column="reason"         />
+        <result property="status"        column="status"         />
+        <result property="approveTime"   column="approve_time"   />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <resultMap type="VisitorHost" id="VisitorHostResult">
+        <result property="userId"   column="user_id"   />
+        <result property="name"     column="name"      />
+        <result property="deptName" column="dept_name"  />
+        <result property="email"    column="email"     />
+    </resultMap>
+
+    <sql id="selectApplicationVo">
+        select application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, approve_time, create_time, update_time from visitor_application
+    </sql>
+
+    <!-- 被访人查询：sys_user 正常且未删除，部门取 sys_dept.dept_name -->
+    <select id="selectHostList" parameterType="String" resultMap="VisitorHostResult">
+        select u.user_id, u.nick_name as name, d.dept_name, u.email
+        from sys_user u
+        left join sys_dept d on u.dept_id = d.dept_id and d.del_flag = '0'
+        where u.status = '0' and u.del_flag = '0'
+        <if test="keyword != null and keyword != ''">
+            and u.nick_name like concat('%', #{keyword}, '%')
+        </if>
+        order by u.user_id
+        limit 20
+    </select>
+
+    <select id="selectHostById" parameterType="Long" resultMap="VisitorHostResult">
+        select u.user_id, u.nick_name as name, d.dept_name, u.email
+        from sys_user u
+        left join sys_dept d on u.dept_id = d.dept_id and d.del_flag = '0'
+        where u.user_id = #{userId} and u.status = '0' and u.del_flag = '0'
+    </select>
+
+    <insert id="insertApplication" parameterType="VisitorApplication">
+        insert into visitor_application(
+            application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, create_time
+        ) values (
+            #{applicationId}, #{visitorId}, #{hostId}, #{hostName}, #{startTime}, #{endTime}, #{reason}, '0', sysdate()
+        )
+    </insert>
+
+    <select id="selectApplicationById" parameterType="String" resultMap="VisitorApplicationResult">
+        <include refid="selectApplicationVo"/>
+        where application_id = #{applicationId}
+    </select>
+
+    <!-- 有效记录：当前日期落在申请的开始~结束时间范围内 -->
+    <select id="selectValidList" parameterType="String" resultMap="VisitorApplicationResult">
+        <include refid="selectApplicationVo"/>
+        where visitor_id = #{visitorId}
+          and now() between start_time and end_time
+        order by create_time desc
+    </select>
+
+    <!-- 当日拒绝数：按自然日统计（approve_time 落在当天） -->
+    <select id="countTodayReject" parameterType="String" resultType="int">
+        select count(1) from visitor_application
+        where visitor_id = #{visitorId}
+          and status = '2'
+          and approve_time is not null
+          and approve_time >= curdate()
+          and approve_time &lt; date_add(curdate(), interval 1 day)
+    </select>
+
+    <!-- 审批回写：仅未审批(0)可更新，防重复审批 -->
+    <update id="updateApproveStatus">
+        update visitor_application
+        set status = #{status}, approve_time = #{approveTime}, update_time = sysdate()
+        where application_id = #{applicationId} and status = '0'
+    </update>
+
+</mapper>

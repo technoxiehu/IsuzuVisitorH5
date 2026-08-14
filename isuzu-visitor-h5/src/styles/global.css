@@ -1,0 +1,81 @@
+/* =========================================================
+ * 全局自定义样式(页面级)
+ * 策略:Vant 4 仅负责组件级样式;页面级整体样式一律在此自定义,
+ *       不引入其他样式框架。
+ * 视觉基调参考 docs/pic/股份_访客系统/ 参考页面:
+ *   - 页面背景:浅灰白
+ *   - 标题:棕金色
+ *   - 主按钮:蓝色
+ * (色值为原型起步近似值,后续按参考截图校准)
+ * ========================================================= */
+
+:root {
+  --page-bg: #f5f5f5;
+  --card-bg: #ffffff;
+  --color-title: #8c6d3f; /* 棕金色标题 */
+  --color-primary: #2f6bff; /* 蓝色主按钮 */
+  --color-text: #333333;
+  --color-text-secondary: #999999;
+  --color-border: #e5e5e5;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Vant 4 组件级主题变量:主色与页面基调保持一致 */
+  --van-primary-color: #2f6bff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 页面级容器:所有视图页面统一使用 */
+.page {
+  min-height: 100vh;
+  padding: 16px;
+  background: var(--page-bg);
+}
+
+/* 页面标题(棕金色) */
+.page-title {
+  color: var(--color-title);
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  margin: 24px 0;
+}
+
+/* 卡片容器(白色圆角) */
+.page-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* 表单字段标签 */
+.field-label {
+  font-size: 14px;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.field-label .required {
+  color: #ee0a24;
+  margin-right: 2px;
+}

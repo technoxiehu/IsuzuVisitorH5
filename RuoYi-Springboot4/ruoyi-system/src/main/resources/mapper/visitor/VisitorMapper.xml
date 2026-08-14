@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.visitor.mapper.VisitorMapper">
+
+    <resultMap type="Visitor" id="VisitorResult">
+        <id     property="visitorId"   column="visitor_id"   />
+        <result property="name"        column="name"         />
+        <result property="phone"       column="phone"        />
+        <result property="company"     column="company"      />
+        <result property="avatar"      column="avatar"       />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateTime"  column="update_time"  />
+    </resultMap>
+
+    <sql id="selectVisitorVo">
+        select visitor_id, name, phone, company, avatar, create_time, update_time from visitor
+    </sql>
+
+    <select id="selectVisitorById" parameterType="String" resultMap="VisitorResult">
+        <include refid="selectVisitorVo"/>
+        where visitor_id = #{visitorId}
+    </select>
+
+    <insert id="insertVisitor" parameterType="Visitor">
+        insert into visitor(
+            visitor_id, name, phone, company, avatar, create_time
+        ) values (
+            #{visitorId}, #{name}, #{phone}, #{company}, #{avatar}, sysdate()
+        )
+    </insert>
+
+    <update id="updateVisitor" parameterType="Visitor">
+        update visitor
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="company != null and company != ''">company = #{company},</if>
+            <if test="avatar != null and avatar != ''">avatar = #{avatar},</if>
+            update_time = sysdate()
+        </set>
+        where visitor_id = #{visitorId}
+    </update>
+
+</mapper>

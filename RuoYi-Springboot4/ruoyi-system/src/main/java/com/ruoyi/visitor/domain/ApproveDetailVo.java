@@ -1,6 +1,7 @@
 package com.ruoyi.visitor.domain;
 
 import java.util.Date;
+import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
@@ -42,6 +43,9 @@ public class ApproveDetailVo
     /** 提交时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTime;
+
+    /** 随行人员名单（身份证号脱敏返回，见 docs/03_接口契约.md §3.8） */
+    private List<VisitorCompanion> companions;
 
     public String getApplicationId()
     {
@@ -141,5 +145,15 @@ public class ApproveDetailVo
     public void setCreateTime(Date createTime)
     {
         this.createTime = createTime;
+    }
+
+    public List<VisitorCompanion> getCompanions()
+    {
+        return companions;
+    }
+
+    public void setCompanions(List<VisitorCompanion> companions)
+    {
+        this.companions = companions;
     }
 }

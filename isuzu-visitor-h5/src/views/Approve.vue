@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { approve, getApproveDetail } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 import { toAvatarUrl } from '@/utils/avatar'
+import CompanionList from '@/components/CompanionList.vue'
 
 defineOptions({ name: 'ApproveView' })
 
@@ -85,7 +86,11 @@ async function onApprove(action) {
           <van-cell title="开始时间" :value="formatDateTime(new Date(detail.startTime.replace(' ', 'T')))" />
           <van-cell title="结束时间" :value="formatDateTime(new Date(detail.endTime.replace(' ', 'T')))" />
           <van-cell title="访问事由" :value="detail.reason" />
+          <!-- 随行人员（PRD v1.4 §5.7，身份证脱敏展示） -->
+          <van-cell title="随行人员" :value="detail.companions?.length ? `${detail.companions.length} 人` : '无'" />
         </van-cell-group>
+        <!-- 随行人员名单（接口已保证脱敏，此处组件内再兜底） -->
+        <CompanionList v-if="detail.companions?.length" class="approve-companions" :companions="detail.companions" />
       </div>
       <div class="action-row">
         <van-button type="danger" block round :loading="submitting" @click="onApprove('reject')">
@@ -140,5 +145,9 @@ async function onApprove(action) {
   display: flex;
   gap: 12px;
   margin-top: 16px;
+}
+
+.approve-companions {
+  padding: 0 24px 16px;
 }
 </style>

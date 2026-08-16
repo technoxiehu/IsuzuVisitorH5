@@ -6,6 +6,7 @@ import { useVisitorStore } from '@/stores/visitor'
 import { getApplicationList, getUser } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 import { toAvatarUrl } from '@/utils/avatar'
+import CompanionList from '@/components/CompanionList.vue'
 
 defineOptions({ name: 'VisitorListView' })
 
@@ -58,6 +59,16 @@ const statusMap = computed(() => ({
 function onProfileClick() {
   router.push('/user-info?mode=edit')
 }
+
+// 非有效记录的副文案（PRD v1.5：列表展示全部记录，门卫仅认「通过且有效期内」）
+function effectiveTip(record) {
+  const now = new Date()
+  if (record.effective === false) {
+    if (new Date(record.startTime.replace(' ', 'T')) > now) return '未到访问时间'
+    if (new Date(record.endTime.replace(' ', 'T')) < now) return '已过期'
+  }
+  return ''
+}
 </script>
 
 <template>
@@ -84,10 +95,17 @@ function onProfileClick() {
     <template v-else>
       <van-empty v-if="!store.records.length" image="search" description=" " />
       <div v-else class="record-list">
-        <div v-for="record in store.records" :key="record.applicationId" class="record-card">
+        <div v-for="record in store.records" :key="record.applicationId" class="record-card"
+          :class="{ 'record-inactive': record.effective === false }">
           <div class="record-main">
             <div class="record-host">被访人：{{ record.hostName }}</div>
-            <div class="record-time">访问截止：{{ formatDateTime(new Date(record.endTime.replace(' ', 'T'))) }}</div>
+            <div class="record-time">访问截止：{{ formatDateTime(new Date(record.endTime.replace(' ', 'T'))) }}
+              <span v-if="record.effective === false" class="record-tip">{{ effectiveTip(record) }}</span>
+            </div>
+            <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；老数据无名单时跳过） -->
+            <div v-if="record.companions?.length" class="record-companions">
+              <CompanionList :companions="record.companions" />
+            </div>
           </div>
           <van-tag :type="statusMap[record.status]?.type" round>
             {{ statusMap[record.status]?.text }}
@@ -162,5 +180,21 @@ function onProfileClick() {
   font-size: 13px;
   color: var(--color-text-secondary);
   margin-top: 4px;
+}
+
+.record-tip {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.record-inactive {
+  opacity: 0.55;
+}
+
+.record-companions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
 }
 </style>

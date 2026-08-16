@@ -53,7 +53,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         insert into visitor_application(
             application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, create_time
         ) values (
-            #{applicationId}, #{visitorId}, #{hostId}, #{hostName}, #{startTime}, #{endTime}, #{reason}, '0', sysdate()
+            #{applicationId}, #{visitorId}, #{hostId}, #{hostName}, #{startTime}, #{endTime}, #{reason}, '0', #{createTime}
         )
     </insert>
 
@@ -62,28 +62,27 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where application_id = #{applicationId}
     </select>
 
-    <!-- 有效记录：当前日期落在申请的开始~结束时间范围内 -->
+    <!-- 全部申请记录：窗口有效性由应用层按 effective 计算（PRD v1.5） -->
     <select id="selectValidList" parameterType="String" resultMap="VisitorApplicationResult">
         <include refid="selectApplicationVo"/>
         where visitor_id = #{visitorId}
-          and now() between start_time and end_time
         order by create_time desc
     </select>
 
-    <!-- 当日拒绝数：按自然日统计（approve_time 落在当天） -->
-    <select id="countTodayReject" parameterType="String" resultType="int">
+    <!-- 当日拒绝数：当日区间由应用层传入（GMT+8 自然日，不依赖数据库 curdate()） -->
+    <select id="countTodayReject" resultType="int">
         select count(1) from visitor_application
         where visitor_id = #{visitorId}
           and status = '2'
           and approve_time is not null
-          and approve_time >= curdate()
-          and approve_time &lt; date_add(curdate(), interval 1 day)
+          and approve_time &gt;= #{todayStart}
+          and approve_time &lt; #{nextDayStart}
     </select>
 
-    <!-- 审批回写：仅未审批(0)可更新，防重复审批 -->
+    <!-- 审批回写：仅未审批(0)可更新，防重复审批（时间由应用层传入） -->
     <update id="updateApproveStatus">
         update visitor_application
-        set status = #{status}, approve_time = #{approveTime}, update_time = sysdate()
+        set status = #{status}, approve_time = #{approveTime}, update_time = #{updateTime}
         where application_id = #{applicationId} and status = '0'
     </update>
 

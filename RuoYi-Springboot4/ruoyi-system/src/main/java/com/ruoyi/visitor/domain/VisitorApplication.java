@@ -1,6 +1,7 @@
 package com.ruoyi.visitor.domain;
 
 import java.util.Date;
+import java.util.List;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -54,6 +55,12 @@ public class VisitorApplication
     /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date updateTime;
+
+    /** 随行人员名单（提交入参 + 列表/详情返回，见 docs/03_接口契约.md §3.6） */
+    private List<VisitorCompanion> companions;
+
+    /** 是否在访问时间窗口内（列表返回用，应用服务器时间计算，非表字段） */
+    private Boolean effective;
 
     public String getApplicationId()
     {
@@ -169,6 +176,26 @@ public class VisitorApplication
     public void setUpdateTime(Date updateTime)
     {
         this.updateTime = updateTime;
+    }
+
+    public List<VisitorCompanion> getCompanions()
+    {
+        return companions;
+    }
+
+    public void setCompanions(List<VisitorCompanion> companions)
+    {
+        this.companions = companions;
+    }
+
+    public Boolean getEffective()
+    {
+        return effective;
+    }
+
+    public void setEffective(Boolean effective)
+    {
+        this.effective = effective;
     }
 
     @Override

@@ -46,20 +46,25 @@ public interface VisitorApplicationMapper
     public VisitorApplication selectApplicationById(String applicationId);
 
     /**
-     * 查询访客的有效审批记录（当前日期在开始~结束时间范围内），按提交时间倒序
+     * 查询访客的全部申请记录（列表页/入口分流，PRD v1.5），按提交时间倒序
+     * 是否在访问时间窗口内由应用层按 effective 计算（不依赖数据库时钟，见 docs/03_接口契约.md §3.7）
      *
      * @param visitorId 访客ID
-     * @return 有效申请单集合
+     * @return 申请单集合
      */
     public List<VisitorApplication> selectValidList(String visitorId);
 
     /**
-     * 统计访客当日（自然日）被拒绝的审批记录数
+     * 统计访客当日（自然日，GMT+8）被拒绝的审批记录数
+     * 当日区间由应用层计算传入（不依赖数据库 curdate()，见 docs/03_接口契约.md §3.7）
      *
      * @param visitorId 访客ID
+     * @param todayStart 当日零点
+     * @param nextDayStart 次日零点
      * @return 当日拒绝数
      */
-    public int countTodayReject(String visitorId);
+    public int countTodayReject(@Param("visitorId") String visitorId, @Param("todayStart") Date todayStart,
+            @Param("nextDayStart") Date nextDayStart);
 
     /**
      * 审批回写（条件更新：仅状态为未审批时可更新，防重复审批）
@@ -70,5 +75,5 @@ public interface VisitorApplicationMapper
      * @return 影响行数
      */
     public int updateApproveStatus(@Param("applicationId") String applicationId, @Param("status") String status,
-            @Param("approveTime") Date approveTime);
+            @Param("approveTime") Date approveTime, @Param("updateTime") Date updateTime);
 }

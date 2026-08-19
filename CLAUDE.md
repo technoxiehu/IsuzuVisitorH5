@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-- 庆铃（Isuzu）访客登记系统：访客扫码预约登记 → 被访问人邮件审批 → 门卫线下核验放行。
+- 五十铃（Isuzu）访客登记系统：访客扫码预约登记 → 被访问人邮件审批 → 门卫线下核验放行。
 - 业务规范以 `docs/01_PRD.md`（v1.2）与 `docs/02_业务流程图.md` 为准，接口与表结构以 `docs/03_接口契约.md` 为准；修改业务逻辑前先核对 PRD，业务变更需同步更新 PRD。
 - 两个工程：
   - `isuzu-visitor-h5/` — 前端 H5（访客扫码使用），Vue 3.5 + Vite 8 + Vue Router 5 + Pinia 4 + Vant 4 + axios，Node `^22.18.0 || >=24.12.0`。**业务页面、API 层已全部实现**（详见「架构与约定」）。

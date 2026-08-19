@@ -26,6 +26,9 @@ public class Visitor
     /** 手机号 */
     private String phone;
 
+    /** 身份证号(18位,明文存储,展示脱敏) */
+    private String idCard;
+
     /** 单位 */
     private String company;
 
@@ -74,6 +77,17 @@ public class Visitor
     public void setPhone(String phone)
     {
         this.phone = phone;
+    }
+
+    @Size(max = 18, message = "身份证号长度不能超过18个字符")
+    public String getIdCard()
+    {
+        return idCard;
+    }
+
+    public void setIdCard(String idCard)
+    {
+        this.idCard = idCard;
     }
 
     @NotBlank(message = "单位不能为空")

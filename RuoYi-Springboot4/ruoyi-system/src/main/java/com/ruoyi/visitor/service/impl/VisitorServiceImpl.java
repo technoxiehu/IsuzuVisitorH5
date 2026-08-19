@@ -3,9 +3,11 @@ package com.ruoyi.visitor.service.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.visitor.domain.Visitor;
 import com.ruoyi.visitor.mapper.VisitorMapper;
 import com.ruoyi.visitor.service.IVisitorService;
+import com.ruoyi.visitor.utils.IdCardUtils;
 
 /**
  * 访客信息 业务层处理
@@ -27,6 +29,7 @@ public class VisitorServiceImpl implements IVisitorService
     @Override
     public Visitor selectVisitor(String visitorId)
     {
+        // 返回全量身份证号：我的信息页本人回显用；门卫列表页由前端 maskIdCard 脱敏展示
         return visitorMapper.selectVisitorById(visitorId);
     }
 
@@ -43,6 +46,13 @@ public class VisitorServiceImpl implements IVisitorService
         {
             throw new ServiceException("该用户已注册", 601);
         }
+        // 身份证号必填：格式 + 校验位（GB 11643-1999），末位小写 x 统一转大写
+        String idCard = visitor.getIdCard();
+        if (StringUtils.isEmpty(idCard) || !IdCardUtils.isValid(idCard.toUpperCase()))
+        {
+            throw new ServiceException("身份证号不能为空或格式不正确", 400);
+        }
+        visitor.setIdCard(idCard.toUpperCase());
         visitorMapper.insertVisitor(visitor);
     }
 
@@ -58,6 +68,16 @@ public class VisitorServiceImpl implements IVisitorService
         if (exist == null)
         {
             throw new ServiceException("用户不存在", 601);
+        }
+        // 脱敏值防覆盖守卫：空/脱敏值(含*)置 null → mapper 跳过该列保留原值；全量合法值才更新
+        String idCard = visitor.getIdCard();
+        if (idCard == null || !IdCardUtils.isValid(idCard.toUpperCase()))
+        {
+            visitor.setIdCard(null);
+        }
+        else
+        {
+            visitor.setIdCard(idCard.toUpperCase());
         }
         visitorMapper.updateVisitor(visitor);
     }

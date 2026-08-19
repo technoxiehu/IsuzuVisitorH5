@@ -14,10 +14,15 @@ const router = useRouter()
 const store = useVisitorStore()
 
 const isEdit = ref(false)
-const form = reactive({ name: '', phone: '', company: '', avatar: '' })
-const errors = reactive({ name: '', phone: '', company: '', avatar: '' })
+const form = reactive({ name: '', phone: '', idCard: '', company: '', avatar: '' })
+const errors = reactive({ name: '', phone: '', idCard: '', company: '', avatar: '' })
 const fileList = ref([])
 const submitting = ref(false)
+
+// 18 位身份证格式（末位可 X，与 Application.vue 随行人员校验一致）
+const ID_CARD_RE = /^\d{17}[\dX]$/
+// 输入过滤：仅数字与 X（自动转大写），截断 18 位
+const idCardFormatter = (v) => v.replace(/[^\dXx]/g, '').slice(0, 18).toUpperCase()
 
 onMounted(async () => {
   // 等待路由解析完成后再读取 query 与回显
@@ -26,6 +31,7 @@ onMounted(async () => {
   if (isEdit.value && store.userInfo) {
     form.name = store.userInfo.name || ''
     form.phone = store.userInfo.phone || ''
+    form.idCard = store.userInfo.idCard || '' // 后端返回全量值，本人设备回显
     form.company = store.userInfo.company || ''
     form.avatar = store.userInfo.avatar || ''
     if (form.avatar) {
@@ -56,9 +62,11 @@ async function onAvatarRead(file) {
 function validate() {
   errors.name = form.name.trim() ? (form.name.length > 20 ? '姓名长度不能超过20个字符' : '') : '请输入姓名'
   errors.phone = /^1[3-9]\d{9}$/.test(form.phone) ? '' : '请输入正确的11位手机号'
+  // 全量回显，须为合法 18 位身份证号
+  errors.idCard = ID_CARD_RE.test(form.idCard) ? '' : '请输入正确的18位身份证号'
   errors.company = form.company.trim() ? '' : '请输入单位'
   errors.avatar = form.avatar ? '' : '请上传头像照片'
-  return !errors.name && !errors.phone && !errors.company && !errors.avatar
+  return !errors.name && !errors.phone && !errors.idCard && !errors.company && !errors.avatar
 }
 
 async function onSubmit() {
@@ -68,6 +76,7 @@ async function onSubmit() {
     visitorId: store.visitorId,
     name: form.name.trim(),
     phone: form.phone,
+    idCard: form.idCard, // 脱敏值也原样提交，由后端守卫决定是否覆盖
     company: form.company.trim(),
     avatar: form.avatar,
   }
@@ -125,6 +134,18 @@ async function onSubmit() {
         placeholder="请输入11位手机号"
         maxlength="11"
         :error-message="errors.phone"
+        required
+      />
+
+      <!-- 身份证号 -->
+      <van-field
+        v-model="form.idCard"
+        type="tel"
+        label="身份证号"
+        placeholder="请输入18位身份证号"
+        maxlength="18"
+        :formatter="idCardFormatter"
+        :error-message="errors.idCard"
         required
       />
 

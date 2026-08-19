@@ -8,6 +8,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <id     property="visitorId"   column="visitor_id"   />
         <result property="name"        column="name"         />
         <result property="phone"       column="phone"        />
+        <result property="idCard"      column="id_card"      />
         <result property="company"     column="company"      />
         <result property="avatar"      column="avatar"       />
         <result property="createTime"  column="create_time"  />
@@ -15,7 +16,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectVisitorVo">
-        select visitor_id, name, phone, company, avatar, create_time, update_time from visitor
+        select visitor_id, name, phone, id_card, company, avatar, create_time, update_time from visitor
     </sql>
 
     <select id="selectVisitorById" parameterType="String" resultMap="VisitorResult">
@@ -25,9 +26,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <insert id="insertVisitor" parameterType="Visitor">
         insert into visitor(
-            visitor_id, name, phone, company, avatar, create_time
+            visitor_id, name, phone, id_card, company, avatar, create_time
         ) values (
-            #{visitorId}, #{name}, #{phone}, #{company}, #{avatar}, sysdate()
+            #{visitorId}, #{name}, #{phone}, #{idCard}, #{company}, #{avatar}, sysdate()
         )
     </insert>
 
@@ -36,6 +37,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <set>
             <if test="name != null and name != ''">name = #{name},</if>
             <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="idCard != null and idCard != ''">id_card = #{idCard},</if>
             <if test="company != null and company != ''">company = #{company},</if>
             <if test="avatar != null and avatar != ''">avatar = #{avatar},</if>
             update_time = sysdate()

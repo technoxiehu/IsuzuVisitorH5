@@ -6,6 +6,7 @@ import { useVisitorStore } from '@/stores/visitor'
 import { getApplicationList, getUser } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 import { toAvatarUrl } from '@/utils/avatar'
+import { maskIdCard } from '@/utils/mask'
 import CompanionList from '@/components/CompanionList.vue'
 
 defineOptions({ name: 'VisitorListView' })
@@ -81,6 +82,8 @@ function effectiveTip(record) {
       <div class="profile-info">
         <div class="profile-name">{{ store.userInfo?.name || '—' }}</div>
         <div class="profile-company">{{ store.userInfo?.company || '' }}</div>
+        <!-- 身份证号（脱敏，门卫对照实体证件核验；后端已脱敏，maskIdCard 幂等） -->
+        <div class="profile-idcard">身份证：{{ store.userInfo?.idCard ? maskIdCard(store.userInfo.idCard) : '—' }}</div>
       </div>
       <van-icon name="arrow" color="#999" />
     </div>
@@ -141,6 +144,13 @@ function effectiveTip(record) {
   font-size: 13px;
   color: var(--color-text-secondary);
   margin-top: 4px;
+}
+
+.profile-idcard {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .timestamp {

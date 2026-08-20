@@ -106,3 +106,17 @@ mvn spring-boot:run   # 在 ruoyi-admin 模块下直接启动（需先 mvn insta
 - `docs/pic/prototype_pic/` — 5 张原型图；`docs/pic/股份_访客系统/` — 参考截图。
 - `docs/discard/` — 已弃用文档，勿参考。
 - `RuoYi-Springboot4/README.md` — 若依官方模板说明（含各 Spring Boot 版本分支差异）；后端框架文档见 https://doc.ruoyi.vip。
+
+## Agent skills
+
+### Issue tracker
+
+Issues 以 markdown 文件存于 `.scratch/<feature-slug>/`（每功能一个目录，单 ticket 单文件，`Status:` 记录 triage 状态）。See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+五个规范 triage 角色使用默认标签：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context：根级 `CONTEXT.md` + `docs/adr/`，目前均不存在，由 `/domain-modeling` 惰性创建，探索时缺失则静默跳过。See `docs/agents/domain.md`.

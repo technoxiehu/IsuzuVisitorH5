@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.netease.mapper.ThirdSyncMappingMapper">
+
+    <resultMap type="ThirdSyncMapping" id="ThirdSyncMappingResult">
+        <id     property="id"             column="id"              />
+        <result property="thirdType"      column="third_type"      />
+        <result property="ruoyiTable"     column="ruoyi_table"     />
+        <result property="ruoyiId"        column="ruoyi_id"        />
+        <result property="thirdId"        column="third_id"        />
+        <result property="thirdAltId"     column="third_alt_id"    />
+        <result property="thirdParentId"  column="third_parent_id" />
+        <result property="thirdJson"      column="third_json"      />
+        <result property="syncStatus"     column="sync_status"     />
+        <result property="syncTime"       column="sync_time"       />
+        <result property="syncVersion"    column="sync_version"    />
+        <result property="createBy"       column="create_by"       />
+        <result property="createTime"     column="create_time"     />
+        <result property="updateBy"       column="update_by"       />
+        <result property="updateTime"     column="update_time"     />
+    </resultMap>
+
+    <sql id="selectMappingVo">
+        select id, third_type, ruoyi_table, ruoyi_id, third_id, third_alt_id, third_parent_id,
+               third_json, sync_status, sync_time, sync_version,
+               create_by, create_time, update_by, update_time
+        from sys_third_sync_mapping
+    </sql>
+
+    <select id="selectByThirdId" resultMap="ThirdSyncMappingResult">
+        <include refid="selectMappingVo"/>
+        where third_type = #{param1} and ruoyi_table = #{param2} and third_id = #{param3}
+    </select>
+
+    <select id="selectByAltId" resultMap="ThirdSyncMappingResult">
+        <include refid="selectMappingVo"/>
+        where third_type = #{param1} and ruoyi_table = #{param2} and third_alt_id = #{param3}
+    </select>
+
+    <select id="selectByRuoyiId" resultMap="ThirdSyncMappingResult">
+        <include refid="selectMappingVo"/>
+        where third_type = #{param1} and ruoyi_table = #{param2} and ruoyi_id = #{param3}
+    </select>
+
+    <select id="selectActiveMappings" resultMap="ThirdSyncMappingResult">
+        <include refid="selectMappingVo"/>
+        where third_type = #{thirdType} and sync_status = 1
+    </select>
+
+    <select id="selectAllByTable" resultMap="ThirdSyncMappingResult">
+        <include refid="selectMappingVo"/>
+        where third_type = #{param1} and ruoyi_table = #{param2}
+    </select>
+
+    <insert id="insertMapping" parameterType="ThirdSyncMapping" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_third_sync_mapping(
+            third_type, ruoyi_table, ruoyi_id, third_id, third_alt_id, third_parent_id,
+            third_json, sync_status, sync_time, sync_version,
+            create_by, create_time
+        ) values (
+            #{thirdType}, #{ruoyiTable}, #{ruoyiId}, #{thirdId}, #{thirdAltId}, #{thirdParentId},
+            #{thirdJson}, #{syncStatus}, sysdate(), #{syncVersion},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMapping" parameterType="ThirdSyncMapping">
+        update sys_third_sync_mapping
+        <set>
+            <if test="ruoyiId != null">ruoyi_id = #{ruoyiId},</if>
+            <if test="thirdAltId != null">third_alt_id = #{thirdAltId},</if>
+            <if test="thirdParentId != null">third_parent_id = #{thirdParentId},</if>
+            <if test="thirdJson != null">third_json = #{thirdJson},</if>
+            <if test="syncStatus != null">sync_status = #{syncStatus},</if>
+            <if test="syncVersion != null">sync_version = #{syncVersion},</if>
+            sync_time = sysdate(),
+            update_by = #{updateBy},
+            update_time = sysdate()
+        </set>
+        where third_type = #{thirdType} and ruoyi_table = #{ruoyiTable} and third_id = #{thirdId}
+    </update>
+
+    <update id="updateSyncStatus">
+        update sys_third_sync_mapping
+        set sync_status = #{param4}, sync_time = sysdate(), update_time = sysdate()
+        where third_type = #{param1} and ruoyi_table = #{param2} and third_id = #{param3}
+    </update>
+
+    <update id="updateSyncVersion">
+        update sys_third_sync_mapping
+        set sync_version = #{param4}, sync_time = sysdate(), update_time = sysdate()
+        where third_type = #{param1} and ruoyi_table = #{param2} and third_id = #{param3}
+    </update>
+
+</mapper>

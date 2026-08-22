@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.netease.mapper.ThirdSyncLogMapper">
+
+    <resultMap type="ThirdSyncLog" id="ThirdSyncLogResult">
+        <id     property="id"          column="id"           />
+        <result property="syncType"    column="sync_type"    />
+        <result property="syncAction"  column="sync_action"  />
+        <result property="thirdId"     column="third_id"     />
+        <result property="ruoyiId"     column="ruoyi_id"     />
+        <result property="beforeJson"  column="before_json"  />
+        <result property="afterJson"   column="after_json"   />
+        <result property="syncStatus"  column="sync_status"  />
+        <result property="errorMsg"    column="error_msg"    />
+        <result property="syncVersion" column="sync_version" />
+        <result property="createTime"  column="create_time"  />
+    </resultMap>
+
+    <insert id="insertLog" parameterType="ThirdSyncLog" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_third_sync_log(
+            sync_type, sync_action, third_id, ruoyi_id,
+            before_json, after_json, sync_status, error_msg, sync_version,
+            create_time
+        ) values (
+            #{syncType}, #{syncAction}, #{thirdId}, #{ruoyiId},
+            #{beforeJson}, #{afterJson}, #{syncStatus}, #{errorMsg}, #{syncVersion},
+            sysdate()
+        )
+    </insert>
+
+    <select id="selectRecentLogs" resultMap="ThirdSyncLogResult">
+        select * from sys_third_sync_log
+        where sync_type = #{param1}
+        order by create_time desc
+        limit #{param2}
+    </select>
+
+    <select id="countFailuresSince" resultType="int">
+        select count(*) from sys_third_sync_log
+        where sync_type = #{param1} and sync_status = 0 and create_time >= #{param2}
+    </select>
+
+</mapper>

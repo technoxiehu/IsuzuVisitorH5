@@ -189,10 +189,9 @@
             <properties>
                 <spring.profiles.active>dev</spring.profiles.active>
             </properties>
-<!--           <activation>-->
-<!--               &lt;!&ndash;默认激活&ndash;&gt;-->
-<!--               <activeByDefault>true</activeByDefault>-->
-<!--           </activation>-->
+           <activation>
+               <activeByDefault>true</activeByDefault>
+           </activation>
         </profile>
         <!--生产环境-->
         <profile>
@@ -200,9 +199,9 @@
             <properties>
                 <spring.profiles.active>druid</spring.profiles.active>
             </properties>
-             <activation>
+             <!-- <activation>
                  <activeByDefault>true</activeByDefault>
-             </activation>
+             </activation> -->
         </profile>
     </profiles>
 

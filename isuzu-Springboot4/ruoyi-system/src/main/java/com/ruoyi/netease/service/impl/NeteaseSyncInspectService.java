@@ -13,15 +13,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.alibaba.fastjson2.JSON;
-import com.ruoyi.common.constant.UserConstants;
-import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.netease.domain.NeteaseAccountResp;
 import com.ruoyi.netease.domain.NeteaseUnitItem;
 import com.ruoyi.netease.domain.ThirdSyncMapping;
 import com.ruoyi.netease.service.IThirdSyncLogService;
 import com.ruoyi.netease.service.IThirdSyncMappingService;
 import com.ruoyi.netease.service.NeteaseApiClient;
-import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.system.service.ISysConfigService;
 
 /**
@@ -55,9 +52,6 @@ public class NeteaseSyncInspectService
     @Autowired
     private ISysConfigService configService;
 
-    @Autowired
-    private SysDeptMapper deptMapper;
-
     /**
      * 执行全量巡检
      */
@@ -88,7 +82,7 @@ public class NeteaseSyncInspectService
                     .collect(Collectors.toList());
 
             // 比对部门
-            Long rootDeptId = getRootDeptId();
+            Long rootDeptId = deptSyncService.getRootDeptId();
             fixCount += inspectDepts(deptMappings, remoteDeptHash, remoteDepts, rootDeptId);
             // 比对用户
             fixCount += inspectUsers(userMappings, remoteUserHash, remoteUsers, domain, rootDeptId);
@@ -126,7 +120,7 @@ public class NeteaseSyncInspectService
             if (remoteH == null)
             {
                 // 远程已删除，本地还在 → 软停用
-                softDisableDept(local);
+                deptSyncService.softDisableDept(local, 0L);
                 fixCount++;
                 continue;
             }
@@ -141,7 +135,7 @@ public class NeteaseSyncInspectService
                         .findFirst().orElse(null);
                 if (remoteUnit != null)
                 {
-                    fixDriftedDept(local, remoteUnit, rootDeptId);
+                    deptSyncService.fixDriftedDept(local, remoteUnit, rootDeptId);
                     fixCount++;
                 }
             }
@@ -296,85 +290,6 @@ public class NeteaseSyncInspectService
         {
             return md5(thirdJson); // 解析失败兜底
         }
-    }
-
-    private void softDisableDept(ThirdSyncMapping mapping)
-    {
-        SysDept dept = deptMapper.selectDeptById(mapping.getRuoyiId());
-        if (dept != null)
-        {
-            dept.setStatus(UserConstants.DEPT_DISABLE);
-            dept.setUpdateBy("netease-sync");
-            deptMapper.updateDept(dept);
-        }
-        mappingService.markDisabled(THIRD_TYPE, "sys_dept", mapping.getThirdId());
-        logService.recordInspectFix(mapping.getThirdId(), mapping.getRuoyiId(),
-                mapping.getThirdJson(), null, 0L);
-    }
-
-    private void fixDriftedDept(ThirdSyncMapping mapping, NeteaseUnitItem remoteUnit, Long rootDeptId)
-    {
-        SysDept dept = deptMapper.selectDeptById(mapping.getRuoyiId());
-        if (dept != null)
-        {
-            String beforeJson = mapping.getThirdJson();
-            dept.setDeptName(remoteUnit.getUnitName());
-            dept.setOrderNum(remoteUnit.getRank() != null ? remoteUnit.getRank() : 0);
-            dept.setUpdateBy("netease-sync");
-
-            // 父级修正：解析 unitParentId → 若依 dept_id，并重算 ancestors
-            String unitParentId = remoteUnit.getUnitParentId();
-            Long parentRuoyiId = rootDeptId;
-            if (unitParentId != null && !unitParentId.isEmpty() && !"0".equals(unitParentId))
-            {
-                Long resolved = mappingService.getRuoyiIdByAltId(THIRD_TYPE, "sys_dept", unitParentId);
-                if (resolved != null)
-                {
-                    parentRuoyiId = resolved;
-                }
-            }
-            if (parentRuoyiId != null && !parentRuoyiId.equals(dept.getParentId()))
-            {
-                // 父级变化：重算 ancestors = 父部门.ancestors + "," + 父部门.dept_id
-                SysDept parent = deptMapper.selectDeptById(parentRuoyiId);
-                String ancestors;
-                if (parent != null)
-                {
-                    ancestors = ("0".equals(parent.getAncestors()) || parent.getAncestors() == null)
-                            ? parent.getDeptId().toString()
-                            : parent.getAncestors() + "," + parent.getDeptId();
-                }
-                else
-                {
-                    ancestors = "0," + parentRuoyiId;
-                }
-                dept.setParentId(parentRuoyiId);
-                dept.setAncestors(ancestors);
-            }
-            deptMapper.updateDept(dept);
-
-            String afterJson = JSON.toJSONString(remoteUnit);
-            mapping.setThirdJson(afterJson);
-            mapping.setUpdateBy("netease-sync");
-            mappingService.saveMapping(mapping);
-            logService.recordInspectFix(mapping.getThirdId(), mapping.getRuoyiId(), beforeJson, afterJson, 0L);
-        }
-    }
-
-    /**
-     * 查询若依部门树的根节点（parent_id=0）
-     */
-    private Long getRootDeptId()
-    {
-        List<SysDept> roots = deptMapper.selectDeptList(null)
-                .stream()
-                .filter(d -> d.getParentId() != null && d.getParentId() == 0L)
-                .collect(java.util.stream.Collectors.toList());
-        if (roots.isEmpty())
-        {
-            return 100L; // 若依默认根部门 ID
-        }
-        return roots.get(0).getDeptId();
     }
 
     private static String md5(String input)

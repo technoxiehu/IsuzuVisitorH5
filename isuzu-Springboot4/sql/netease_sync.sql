@@ -81,7 +81,8 @@ VALUES
 ('网易企业邮箱企业OpenId',     'netease.org.open.id',  '', 'Y', 'admin', NOW(), '企业OpenId'),
 ('网易企业邮箱域名',           'netease.domain',       '', 'Y', 'admin', NOW(), '企业邮箱域名，如 xxx.com'),
 ('网易企业邮箱同步版本号',     'netease.sync.revision','0', 'Y', 'admin', NOW(), '已同步的最新版本号，默认0'),
-('网易企业邮箱同步模式',       'netease.sync.mode',    'increment', 'Y', 'admin', NOW(), 'increment 增量 / full 全量');
+('网易企业邮箱同步模式',       'netease.sync.mode',    'increment', 'Y', 'admin', NOW(), 'increment 增量 / full 全量'),
+('网易邮箱部门对账开关',       'netease.dept.reconcile.enabled', 'true', 'Y', 'admin', NOW(), 'false 时跳过部门对账');
 
 -- ----------------------------
 -- 4. 定时任务注册（通过 sys_job 表管理）
@@ -90,7 +91,8 @@ VALUES
 INSERT IGNORE INTO sys_job (job_name, job_group, invoke_target, cron_expression, misfire_policy, concurrent, status, create_by, create_time, remark)
 VALUES
 ('网易邮箱日常同步', 'NETEASE', 'neteaseSyncJob.syncDaily', '0 0 2 * * ?', '3', '1', '0', 'admin', NOW(), '每日凌晨2点增量同步网易企业邮箱组织架构'),
-('网易邮箱全量巡检', 'NETEASE', 'neteaseSyncJob.inspect', '0 0 3 ? * 1', '3', '1', '0', 'admin', NOW(), '每周日03:00全量哈希比对巡检');
+('网易邮箱全量巡检', 'NETEASE', 'neteaseSyncJob.inspect', '0 0 3 ? * 1', '3', '1', '0', 'admin', NOW(), '每周日03:00全量哈希比对巡检'),
+('网易邮箱部门对账', 'NETEASE', 'neteaseSyncJob.syncDeptReconcile', '0 */30 * * * ?', '3', '1', '0', 'admin', NOW(), '每30分钟轮询getUnitList对账部门（网易revision流不含部门事件）');
 
 -- ----------------------------
 -- 5. 开发环境初始化：删除旧种子数据，保留根锚点，admin/ry 挂顶层

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +29,7 @@ import com.ruoyi.system.service.ISysConfigService;
  * @author isuzu
  */
 @Service
-public class NeteaseApiClient
-{
+public class NeteaseApiClient {
     private static final Logger log = LoggerFactory.getLogger(NeteaseApiClient.class);
 
     private static final String CONFIG_DOMAIN = "netease.domain";
@@ -49,8 +49,7 @@ public class NeteaseApiClient
     /**
      * 获取全量部门列表
      */
-    public List<NeteaseUnitItem> getAllUnits()
-    {
+    public List<NeteaseUnitItem> getAllUnits() {
         String domain = getDomain();
         Map<String, Object> body = new HashMap<>();
         body.put("domain", domain);
@@ -63,16 +62,14 @@ public class NeteaseApiClient
     /**
      * 分页获取全量账号列表
      */
-    public List<NeteaseAccountResp> getAllAccounts()
-    {
+    public List<NeteaseAccountResp> getAllAccounts() {
         String domain = getDomain();
         List<NeteaseAccountResp> allAccounts = new ArrayList<>();
         int pageNum = 1;
         int pageSize = 50;
         boolean hasMore = true;
 
-        while (hasMore)
-        {
+        while (hasMore) {
             Map<String, Object> body = new HashMap<>();
             body.put("domain", domain);
             body.put("pageNum", pageNum);
@@ -91,12 +88,9 @@ public class NeteaseApiClient
                 pageList = data.getJSONArray("list").toList(NeteaseAccountResp.class);
             }
 
-            if (pageList == null || pageList.isEmpty())
-            {
+            if (pageList == null || pageList.isEmpty()) {
                 hasMore = false;
-            }
-            else
-            {
+            } else {
                 allAccounts.addAll(pageList);
                 pageNum++;
                 // 分页间隔，避免频率限制
@@ -110,8 +104,7 @@ public class NeteaseApiClient
     /**
      * 获取最新版本号
      */
-    public Long getMaxRevision()
-    {
+    public Long getMaxRevision() {
         String orgOpenId = tokenService.getOrgOpenId();
         Map<String, Object> body = new HashMap<>();
         body.put("orgOpenId", orgOpenId);
@@ -125,8 +118,7 @@ public class NeteaseApiClient
     /**
      * 获取版本变更数据
      */
-    public NeteaseRevisionData getRevisionData(long revision)
-    {
+    public NeteaseRevisionData getRevisionData(long revision) {
         String orgOpenId = tokenService.getOrgOpenId();
         Map<String, Object> body = new HashMap<>();
         body.put("orgOpenId", orgOpenId);
@@ -140,15 +132,12 @@ public class NeteaseApiClient
 
     // ---- 内部方法 ----
 
-    private String post(String apiPath, Map<String, Object> body)
-    {
+    private String post(String apiPath, Map<String, Object> body) {
         return postWithRetry(apiPath, body, 0);
     }
 
-    private String postWithRetry(String apiPath, Map<String, Object> body, int retryCount)
-    {
-        try
-        {
+    private String postWithRetry(String apiPath, Map<String, Object> body, int retryCount) {
+        try {
             String serverUrl = tokenService.getServerUrl();
             String url = serverUrl + apiPath;
             String jsonBody = JSON.toJSONString(body);
@@ -169,21 +158,17 @@ public class NeteaseApiClient
             // 检查 token 是否过期
             JSONObject resp = JSON.parseObject(respBody);
             Integer code = resp.getInteger("code");
-            if (code != null && (code == -301 || code == -300))
-            {
+            if (code != null && (code == -301 || code == -300)) {
                 // token 过期，刷新后重试一次
-                if (retryCount < 1)
-                {
+                if (retryCount < 1) {
                     log.info("Token 过期 (code={})，刷新后重试", code);
                     tokenService.forceRefresh();
                     return postWithRetry(apiPath, body, retryCount + 1);
                 }
             }
             // 频率限制，指数退避
-            if (code != null && (code == -422 || code == -423))
-            {
-                if (retryCount < MAX_RETRY)
-                {
+            if (code != null && (code == -422 || code == -423)) {
+                if (retryCount < MAX_RETRY) {
                     long delay = RETRY_DELAY_MS * (long) Math.pow(2, retryCount);
                     log.warn("频率限制 (code={})，{}ms 后重试 (第{}次)", code, delay, retryCount + 1);
                     sleep(delay);
@@ -193,30 +178,29 @@ public class NeteaseApiClient
             }
 
             return respBody;
-        }
-        catch (ServiceException e) { throw e; }
-        catch (Exception e)
-        {
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
             throw new ServiceException("网易 API 调用失败: " + apiPath + " - " + e.getMessage());
         }
     }
 
-    private void checkCode(JSONObject resp)
-    {
+    private void checkCode(JSONObject resp) {
         Integer code = resp.getInteger("code");
-        if (code == null || code != 0)
-        {
+        if (code == null || code != 0) {
             throw new ServiceException("网易 API 返回错误: code=" + code + ", message=" + resp.getString("message"));
         }
     }
 
-    private String getDomain()
-    {
+    private String getDomain() {
         return configService.selectConfigByKey(CONFIG_DOMAIN);
     }
 
-    private void sleep(long ms)
-    {
-        try { Thread.sleep(ms); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+    private void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

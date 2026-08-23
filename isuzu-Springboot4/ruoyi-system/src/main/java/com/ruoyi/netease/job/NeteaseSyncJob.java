@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.netease.service.impl.NeteaseDeptSyncService;
 import com.ruoyi.netease.service.impl.NeteaseSyncService;
 
 /**
@@ -21,10 +22,14 @@ public class NeteaseSyncJob
 {
     private static final Logger log = LoggerFactory.getLogger(NeteaseSyncJob.class);
     private static final String LOCK_KEY = "netease:sync:lock";
+    private static final String DEPT_LOCK_KEY = "netease:dept-reconcile:lock";
     private static final long LOCK_TTL_MINUTES = 30;
 
     @Autowired
     private NeteaseSyncService syncService;
+
+    @Autowired
+    private NeteaseDeptSyncService deptSyncService;
 
     @Autowired
     private RedisCache redisCache;
@@ -107,13 +112,49 @@ public class NeteaseSyncJob
         }
     }
 
+    /**
+     * 部门对账（独立锁，不与日常同步互斥）
+     */
+    public void syncDeptReconcile()
+    {
+        if (!tryLock(DEPT_LOCK_KEY))
+        {
+            log.info("部门对账任务正在执行中，跳过本次调度");
+            return;
+        }
+        try
+        {
+            log.info("开始执行网易邮箱部门对账任务");
+            int changeCount = deptSyncService.reconcileDepts();
+            log.info("网易邮箱部门对账任务完成，变更{}条", changeCount);
+        }
+        catch (Exception e)
+        {
+            log.error("网易邮箱部门对账任务失败", e);
+        }
+        finally
+        {
+            unlock(DEPT_LOCK_KEY);
+        }
+    }
+
     private boolean tryLock()
+    {
+        return tryLock(LOCK_KEY);
+    }
+
+    private void unlock()
+    {
+        unlock(LOCK_KEY);
+    }
+
+    private boolean tryLock(String lockKey)
     {
         try
         {
             RedisTemplate redisTemplate = redisCache.redisTemplate;
             Boolean locked = redisTemplate.opsForValue()
-                    .setIfAbsent(LOCK_KEY, UUID.randomUUID().toString(), LOCK_TTL_MINUTES, TimeUnit.MINUTES);
+                    .setIfAbsent(lockKey, UUID.randomUUID().toString(), LOCK_TTL_MINUTES, TimeUnit.MINUTES);
             return Boolean.TRUE.equals(locked);
         }
         catch (Exception e)
@@ -123,11 +164,11 @@ public class NeteaseSyncJob
         }
     }
 
-    private void unlock()
+    private void unlock(String lockKey)
     {
         try
         {
-            redisCache.deleteObject(LOCK_KEY);
+            redisCache.deleteObject(lockKey);
         }
         catch (Exception e)
         {

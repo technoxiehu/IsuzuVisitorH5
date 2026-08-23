@@ -83,6 +83,17 @@ public class NeteaseSyncController
     }
 
     /**
+     * 触发部门对账
+     */
+    @PostMapping("/reconcileDept")
+    @PreAuthorize("@ss.hasRole('admin')")
+    public AjaxResult triggerDeptReconcile()
+    {
+        syncJob.syncDeptReconcile();
+        return AjaxResult.success("部门对账已触发");
+    }
+
+    /**
      * 强制刷新 Token
      */
     @PostMapping("/refreshToken")

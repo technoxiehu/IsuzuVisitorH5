@@ -4,7 +4,7 @@ import { showToast } from 'vant'
 // 访客接口请求封装（docs/03_接口契约.md §1 通用约定）
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
-  timeout: 15000,
+  timeout: 60000,
 })
 
 // 响应拦截：code=200 返回完整响应体；其余统一 Toast 提示并携带 {code, msg} 拒绝，

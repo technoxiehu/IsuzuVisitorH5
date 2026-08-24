@@ -21,20 +21,50 @@ const loading = ref(false)
 // 当前时间戳（防伪措施，PRD v1.3：前端本地时间，每秒刷新）
 const nowTime = ref(formatDateTime(new Date(), true))
 let timer = null
+
+// 列表数据轮询（门卫核验/访客查看需及时反映审批结果，15 秒静默刷新）
+const REFRESH_INTERVAL = 15000
+let refreshTimer = null
+let refreshing = false
+
 onMounted(() => {
   timer = setInterval(() => {
     nowTime.value = formatDateTime(new Date(), true)
   }, 1000)
   loadData()
+  startRefresh()
+  document.addEventListener('visibilitychange', onVisibilityChange)
   // 入口拦截弹窗（当日拒绝数 ≥3）
   if (route.query.toast === 'blocked') {
     showToast('审批人拒绝近期访问，谢谢。')
   }
 })
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+  clearInterval(timer)
+  clearInterval(refreshTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 
-async function loadData() {
-  loading.value = true
+// 页面切后台时暂停轮询（定时器会被节流且请求无效），恢复前台立即刷新并重启
+function onVisibilityChange() {
+  if (document.hidden) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  } else if (!refreshTimer) {
+    loadData({ silent: true })
+    startRefresh()
+  }
+}
+
+function startRefresh() {
+  refreshTimer = setInterval(() => loadData({ silent: true }), REFRESH_INTERVAL)
+}
+
+async function loadData({ silent = false } = {}) {
+  // 防重：上一轮请求未完成时跳过（轮询与首次加载/恢复刷新可能重叠）
+  if (refreshing) return
+  if (!silent) loading.value = true
+  refreshing = true
   try {
     if (!store.userInfo) {
       const res = await getUser(store.visitorId)
@@ -47,7 +77,8 @@ async function loadData() {
   } catch {
     // 拦截器已提示
   } finally {
-    loading.value = false
+    refreshing = false
+    if (!silent) loading.value = false
   }
 }
 

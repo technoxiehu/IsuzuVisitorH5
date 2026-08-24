@@ -181,7 +181,7 @@ onUnmounted(() => {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--color-primary), #6f9bff);
   transform-origin: left;
-  animation: progress-fill 5s linear forwards;
+  animation: progress-fill 3s linear forwards;
 }
 @keyframes progress-fill {
   from {

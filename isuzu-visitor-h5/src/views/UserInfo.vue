@@ -99,7 +99,8 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <h2 class="page-title">{{ isEdit ? '我的信息' : '用户信息' }}</h2>
+    <h2 class="page-title">{{ isEdit ? '我的信息' : '欢迎您来到五十铃发动机厂' }}</h2>
+    <p v-if="!isEdit" class="page-subtitle">请填写个人信息</p>
 
     <div class="page-card">
       <!-- 头像 -->
@@ -166,6 +167,13 @@ async function onSubmit() {
 </template>
 
 <style scoped>
+.page-subtitle {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: -12px 0 16px;
+}
+
 .avatar-row {
   display: flex;
   align-items: center;

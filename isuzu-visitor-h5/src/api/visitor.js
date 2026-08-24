@@ -31,9 +31,14 @@ export function searchHost(keyword) {
   return request.get('/visitor/host/search', { params: { keyword } })
 }
 
-/** §3.6 申请单提交 */
+/** §3.6 申请单提交（携带一次性提交令牌，重复提交返回 601） */
 export function submitApplication(data) {
   return request.post('/visitor/application', data)
+}
+
+/** §3.6.1 获取一次性提交令牌（防重复提交） */
+export function getSubmitToken() {
+  return request.get('/visitor/application/submit-token')
 }
 
 /** §3.7 审批记录查询（有效记录 + 当日拒绝数） */

@@ -67,6 +67,14 @@ public interface VisitorApplicationMapper
             @Param("nextDayStart") Date nextDayStart);
 
     /**
+     * 统计访客待审批（status='0'）申请单数（防重复提交兜底，docs/03_接口契约.md §3.6）
+     *
+     * @param visitorId 访客ID
+     * @return 待审批申请单数
+     */
+    public int countPendingByVisitor(String visitorId);
+
+    /**
      * 审批回写（条件更新：仅状态为未审批时可更新，防重复审批）
      *
      * @param applicationId 申请单号

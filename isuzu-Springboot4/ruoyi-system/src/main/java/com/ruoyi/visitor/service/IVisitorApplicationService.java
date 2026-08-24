@@ -22,9 +22,17 @@ public interface IVisitorApplicationService
     public List<VisitorHost> selectHostList(String keyword);
 
     /**
-     * 提交访问申请（校验通过后落库并发送审批邮件）
+     * 生成一次性提交令牌（防重复提交，Redis 存储，2 小时有效）
      *
-     * @param application 申请单
+     * @return 提交令牌
+     */
+    public String createSubmitToken();
+
+    /**
+     * 提交访问申请（校验通过后落库并发送审批邮件）
+     * 防重复提交：待审批兜底查重 + 一次性令牌原子消费，见 docs/03_接口契约.md §3.6
+     *
+     * @param application 申请单（携带 submitToken）
      * @return 申请单号
      */
     public String submitApplication(VisitorApplication application);

@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useVisitorStore } from '@/stores/visitor'
-import { searchHost, submitApplication } from '@/api/visitor'
+import { getSubmitToken, searchHost, submitApplication } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 
 defineOptions({ name: 'ApplicationView' })
@@ -153,12 +153,34 @@ function onTimeConfirm(items) {
 const submitting = ref(false)
 const showSuccess = ref(false)
 
+// 一次性提交令牌（防重复提交）：sessionStorage 复用，提交成功弹层期间刷新页面后重放旧 token 会被后端 601 拒绝
+const SUBMIT_TOKEN_KEY = 'visitor_submit_token'
+
+async function fetchSubmitToken() {
+  const cached = sessionStorage.getItem(SUBMIT_TOKEN_KEY)
+  if (cached) {
+    submitToken.value = cached
+    return
+  }
+  try {
+    const res = await getSubmitToken()
+    submitToken.value = res.data.submitToken
+    sessionStorage.setItem(SUBMIT_TOKEN_KEY, res.data.submitToken)
+  } catch {
+    // 拦截器已提示；submitToken 为空时 onSubmit 直接 return
+  }
+}
+
+const submitToken = ref('')
+fetchSubmitToken()
+
 const canSubmit = computed(
   () => form.hostId && form.startTime && form.endTime && form.reason.trim() && companionsValid.value,
 )
 
 async function onSubmit() {
-  if (!canSubmit.value) return
+  // 同步守卫：loading 态重渲染前的双击窗口内拦截第二次点击
+  if (submitting.value || !canSubmit.value || !submitToken.value) return
   submitting.value = true
   try {
     await submitApplication({
@@ -168,10 +190,13 @@ async function onSubmit() {
       endTime: `${form.endTime}:00`,
       reason: form.reason.trim(),
       companions: companions.value.map((c) => ({ name: c.name.trim(), idCard: c.idCard.trim() })),
+      submitToken: submitToken.value,
     })
     showSuccess.value = true
   } catch {
-    // 拦截器已提示（如当日拒绝数达 3 次被拦截）
+    // 拦截器已提示（如当日拒绝数达 3 次、重复提交被拦截）；令牌已失效则静默重领，表单数据保留可直接再提交
+    sessionStorage.removeItem(SUBMIT_TOKEN_KEY)
+    fetchSubmitToken()
   } finally {
     submitting.value = false
   }
@@ -179,6 +204,7 @@ async function onSubmit() {
 
 function onSuccessClose() {
   showSuccess.value = false
+  sessionStorage.removeItem(SUBMIT_TOKEN_KEY)
   router.replace('/list')
 }
 

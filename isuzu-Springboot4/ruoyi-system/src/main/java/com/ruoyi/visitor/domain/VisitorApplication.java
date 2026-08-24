@@ -62,6 +62,9 @@ public class VisitorApplication
     /** 是否在访问时间窗口内（列表返回用，应用服务器时间计算，非表字段） */
     private Boolean effective;
 
+    /** 一次性提交令牌（防重复提交，提交时由前端携带，非表字段） */
+    private String submitToken;
+
     public String getApplicationId()
     {
         return applicationId;
@@ -196,6 +199,16 @@ public class VisitorApplication
     public void setEffective(Boolean effective)
     {
         this.effective = effective;
+    }
+
+    public String getSubmitToken()
+    {
+        return submitToken;
+    }
+
+    public void setSubmitToken(String submitToken)
+    {
+        this.submitToken = submitToken;
     }
 
     @Override

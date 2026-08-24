@@ -8,11 +8,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
@@ -48,6 +52,15 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     /** 随行人员最大数量 */
     private static final int MAX_COMPANIONS = 5;
 
+    /** 提交令牌 redis 主键前缀（存在 = 可用） */
+    private static final String SUBMIT_TOKEN_KEY = "visitor:submit_token:";
+
+    /** 已消费提交令牌墓碑前缀（存在 = 已使用过，用于区分「重复提交」与「令牌过期」） */
+    private static final String SUBMIT_TOKEN_USED_KEY = "visitor:submit_token_used:";
+
+    /** 提交令牌有效期（小时），覆盖填表时长 */
+    private static final int SUBMIT_TOKEN_TTL_HOURS = 2;
+
     @Autowired
     private VisitorApplicationMapper visitorApplicationMapper;
 
@@ -63,6 +76,9 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     @Autowired
     private VisitorMailService visitorMailService;
 
+    @Autowired
+    private RedisCache redisCache;
+
     /**
      * 按姓名关键字查询被访人
      */
@@ -73,7 +89,19 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     }
 
     /**
+     * 生成一次性提交令牌（防重复提交）
+     */
+    @Override
+    public String createSubmitToken()
+    {
+        String token = IdUtils.fastUUID();
+        redisCache.setCacheObject(SUBMIT_TOKEN_KEY + token, "1", SUBMIT_TOKEN_TTL_HOURS, TimeUnit.HOURS);
+        return token;
+    }
+
+    /**
      * 提交访问申请（申请单与随行人员同事务写入）
+     * 防重复提交链路：参数校验 → 待审批兜底查重 → 原子消费令牌 → 落库 → 邮件
      */
     @Override
     @Transactional
@@ -90,6 +118,15 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
             throw new ServiceException("审批人拒绝近期访问，谢谢。", 601);
         }
 
+        // 待审批兜底查重：同一访客至多一张待审批单（与 PRD §5.1.5 分流规则同构；拦截刷新/多标签页重进场景）
+        if (visitorApplicationMapper.countPendingByVisitor(application.getVisitorId()) > 0)
+        {
+            throw new ServiceException("您已有一份待审批的申请，请勿重复提交", 601);
+        }
+
+        // 一次性令牌原子消费（先于落库，同 token 重放无论何时到达均被拒）
+        consumeSubmitToken(application.getSubmitToken());
+
         application.setApplicationId(IdUtils.fastUUID());
         application.setStatus("0");
         application.setCreateTime(new Date());
@@ -98,14 +135,70 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         // 随行人员名单随申请单快照入库
         insertCompanions(application);
 
-        // 发送审批邮件（发送失败不影响申请单提交成功，VisitorMailService 内部已兜底）
+        // 发送审批邮件：挪至事务提交后执行，SMTP 耗时不再拉长事务持锁窗口（发送失败不影响申请单提交成功，VisitorMailService 内部已兜底）
+        sendMailAfterCommit(application);
+
+        return application.getApplicationId();
+    }
+
+    /**
+     * 原子消费一次性提交令牌：DEL 返回 true 即抢占成功；
+     * 未抢到时查墓碑区分「已使用」（601 重复提交）与「过期/非法」（400 请重新获取）
+     */
+    private void consumeSubmitToken(String token)
+    {
+        if (StringUtils.isEmpty(token))
+        {
+            throw new ServiceException("缺少提交令牌，请刷新页面后重试", 400);
+        }
+        Boolean consumed = redisCache.deleteObject(SUBMIT_TOKEN_KEY + token);
+        if (Boolean.TRUE.equals(consumed))
+        {
+            // 写墓碑供并发重放请求识别「已使用过」
+            redisCache.setCacheObject(SUBMIT_TOKEN_USED_KEY + token, "1", SUBMIT_TOKEN_TTL_HOURS, TimeUnit.HOURS);
+            return;
+        }
+        Object tombstone = redisCache.getCacheObject(SUBMIT_TOKEN_USED_KEY + token);
+        if (tombstone != null)
+        {
+            throw new ServiceException("请勿重复提交", 601);
+        }
+        throw new ServiceException("页面已过期，请刷新页面后重试", 400);
+    }
+
+    /**
+     * 事务提交后再发审批邮件（无事务同步时降级为直接发送）
+     */
+    private void sendMailAfterCommit(VisitorApplication application)
+    {
+        Runnable mailTask = () -> doSendApproveMail(application);
+        if (TransactionSynchronizationManager.isSynchronizationActive())
+        {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization()
+            {
+                @Override
+                public void afterCommit()
+                {
+                    mailTask.run();
+                }
+            });
+        }
+        else
+        {
+            mailTask.run();
+        }
+    }
+
+    /**
+     * 查询申请单与被访人并实际发送审批邮件
+     */
+    private void doSendApproveMail(VisitorApplication application)
+    {
         Visitor visitor = visitorMapper.selectVisitorById(application.getVisitorId());
         VisitorHost host = visitorApplicationMapper.selectHostById(application.getHostId());
         String hostEmail = host != null ? host.getEmail() : null;
         String token = approveTokenService.createToken(application.getApplicationId());
         visitorMailService.sendApproveMail(application, visitor, hostEmail, token);
-
-        return application.getApplicationId();
     }
 
     /**

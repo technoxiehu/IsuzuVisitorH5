@@ -42,7 +42,18 @@ public class VisitorApplicationController
     }
 
     /**
-     * 申请单提交（校验通过后发审批邮件）
+     * 获取一次性提交令牌（防重复提交，进入申请单页时领取）
+     */
+    @GetMapping("/application/submit-token")
+    public AjaxResult submitToken()
+    {
+        Map<String, Object> data = new HashMap<>();
+        data.put("submitToken", visitorApplicationService.createSubmitToken());
+        return AjaxResult.success(data);
+    }
+
+    /**
+     * 申请单提交（校验通过后发审批邮件；携带一次性提交令牌，重复提交被拦截）
      */
     @PostMapping("/application")
     public AjaxResult submit(@RequestBody VisitorApplication application)

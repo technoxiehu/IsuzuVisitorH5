@@ -10,7 +10,7 @@ const SHOW_MS = 3000 // 动画展示时长
 const EXIT_MS = 600 // 揭幕离场动画时长
 
 // 随机选图：setup 中求值一次，本次进入固定
-const scenes = ['/splash/aerial.jpg', '/splash/gate.jpg']
+const scenes = ['/splash/aerial.jpg', '/splash/gate.jpg', '/splash/front.jpg']
 const imgSrc = scenes[Math.floor(Math.random() * scenes.length)]
 
 // 标题逐字浮现（delay 与 CSS 时间轴对齐）

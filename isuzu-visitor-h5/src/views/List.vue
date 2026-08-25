@@ -127,6 +127,8 @@ function effectiveTip(record) {
         <div class="profile-company">{{ store.userInfo?.company || '' }}</div>
         <!-- 身份证号（脱敏，门卫对照实体证件核验；后端已脱敏，maskIdCard 幂等） -->
         <div class="profile-idcard">身份证：{{ store.userInfo?.idCard ? maskIdCard(store.userInfo.idCard) : '—' }}</div>
+        <!-- 车牌号（非必填，门卫核验车辆；无则隐藏） -->
+        <div v-if="store.userInfo?.plateNo" class="profile-idcard">车牌号：{{ store.userInfo.plateNo }}</div>
       </div>
       <van-icon name="arrow" color="#999" />
     </div>

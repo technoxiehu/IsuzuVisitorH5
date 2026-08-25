@@ -14,8 +14,8 @@ const router = useRouter()
 const store = useVisitorStore()
 
 const isEdit = ref(false)
-const form = reactive({ name: '', phone: '', idCard: '', company: '', avatar: '' })
-const errors = reactive({ name: '', phone: '', idCard: '', company: '', avatar: '' })
+const form = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
+const errors = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
 const fileList = ref([])
 const submitting = ref(false)
 
@@ -23,6 +23,10 @@ const submitting = ref(false)
 const ID_CARD_RE = /^\d{17}[\dX]$/
 // 输入过滤：仅数字与 X（自动转大写），截断 18 位
 const idCardFormatter = (v) => v.replace(/[^\dXx]/g, '').slice(0, 18).toUpperCase()
+// 车牌号非必填：留空通过；填写仅限汉字/字母/数字，≤10 位（宽松校验，兼容新能源等）
+const PLATE_RE = /^[一-龥A-Za-z0-9]{0,10}$/
+// 输入过滤：仅汉字/字母/数字（自动转大写），截断 10 位
+const plateFormatter = (v) => v.replace(/[^一-龥A-Za-z0-9]/g, '').slice(0, 10).toUpperCase()
 
 onMounted(async () => {
   // 等待路由解析完成后再读取 query 与回显
@@ -33,6 +37,7 @@ onMounted(async () => {
     form.phone = store.userInfo.phone || ''
     form.idCard = store.userInfo.idCard || '' // 后端返回全量值，本人设备回显
     form.company = store.userInfo.company || ''
+    form.plateNo = store.userInfo.plateNo || '' // 非必填，老用户无则留空
     form.avatar = store.userInfo.avatar || ''
     if (form.avatar) {
       fileList.value = [{ url: toAvatarUrl(form.avatar) }]
@@ -65,8 +70,17 @@ function validate() {
   // 全量回显，须为合法 18 位身份证号
   errors.idCard = ID_CARD_RE.test(form.idCard) ? '' : '请输入正确的18位身份证号'
   errors.company = form.company.trim() ? '' : '请输入单位'
+  // 车牌号非必填：留空通过；填写时按宽松规则校验（前端已过滤非法字符，此处兜底）
+  errors.plateNo = form.plateNo.trim() && !PLATE_RE.test(form.plateNo) ? '车牌号格式不正确' : ''
   errors.avatar = form.avatar ? '' : '请上传头像照片'
-  return !errors.name && !errors.phone && !errors.idCard && !errors.company && !errors.avatar
+  return (
+    !errors.name &&
+    !errors.phone &&
+    !errors.idCard &&
+    !errors.company &&
+    !errors.plateNo &&
+    !errors.avatar
+  )
 }
 
 async function onSubmit() {
@@ -78,6 +92,7 @@ async function onSubmit() {
     phone: form.phone,
     idCard: form.idCard, // 脱敏值也原样提交，由后端守卫决定是否覆盖
     company: form.company.trim(),
+    plateNo: form.plateNo.trim(), // 非必填，空字符串后端按空处理
     avatar: form.avatar,
   }
   try {
@@ -156,6 +171,16 @@ async function onSubmit() {
         placeholder="请输入单位"
         :error-message="errors.company"
         required
+      />
+
+      <!-- 车牌号（非必填，注册与我的信息页均可填/改） -->
+      <van-field
+        v-model="form.plateNo"
+        label="车牌号"
+        placeholder="请输入车牌号（选填）"
+        maxlength="10"
+        :formatter="plateFormatter"
+        :error-message="errors.plateNo"
       />
     </div>
 

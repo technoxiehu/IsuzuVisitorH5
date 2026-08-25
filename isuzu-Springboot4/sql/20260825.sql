@@ -1,0 +1,1 @@
+  alter table visitor add column plate_no varchar(10) default null comment '车牌号(非必填;仅汉字/字母/数字,≤10位)' after company;

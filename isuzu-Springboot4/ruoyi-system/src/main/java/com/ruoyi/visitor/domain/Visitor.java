@@ -32,6 +32,9 @@ public class Visitor
     /** 单位 */
     private String company;
 
+    /** 车牌号(非必填) */
+    private String plateNo;
+
     /** 头像URL */
     private String avatar;
 
@@ -101,6 +104,18 @@ public class Visitor
         this.company = company;
     }
 
+    @Size(max = 10, message = "车牌号长度不能超过10个字符")
+    @Pattern(regexp = "^[\\u4e00-\\u9fa5A-Za-z0-9]*$", message = "车牌号仅支持汉字、字母、数字")
+    public String getPlateNo()
+    {
+        return plateNo;
+    }
+
+    public void setPlateNo(String plateNo)
+    {
+        this.plateNo = plateNo;
+    }
+
     @NotBlank(message = "头像不能为空")
     public String getAvatar()
     {
@@ -139,6 +154,7 @@ public class Visitor
             .append("name", getName())
             .append("phone", getPhone())
             .append("company", getCompany())
+            .append("plateNo", getPlateNo())
             .append("avatar", getAvatar())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())

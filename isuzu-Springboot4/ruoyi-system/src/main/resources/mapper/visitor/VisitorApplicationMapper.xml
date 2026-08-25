@@ -16,6 +16,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="approveTime"   column="approve_time"   />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
+        <result property="delFlag"       column="del_flag"       />
     </resultMap>
 
     <resultMap type="VisitorHost" id="VisitorHostResult">
@@ -26,7 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectApplicationVo">
-        select application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, approve_time, create_time, update_time from visitor_application
+        select application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, approve_time, create_time, update_time, del_flag from visitor_application
     </sql>
 
     <!-- 被访人查询：sys_user 正常且未删除，部门取 sys_dept.dept_name -->
@@ -62,10 +63,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where application_id = #{applicationId}
     </select>
 
-    <!-- 全部申请记录：窗口有效性由应用层按 effective 计算（PRD v1.5） -->
+    <!-- 全部申请记录：窗口有效性由应用层按 effective 计算（PRD v1.5）；不含已撤销/删除的记录 -->
     <select id="selectValidList" parameterType="String" resultMap="VisitorApplicationResult">
         <include refid="selectApplicationVo"/>
         where visitor_id = #{visitorId}
+          and del_flag = '0'
         order by create_time desc
     </select>
 
@@ -74,6 +76,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select count(1) from visitor_application
         where visitor_id = #{visitorId}
           and status = '2'
+          and del_flag = '0'
           and approve_time is not null
           and approve_time &gt;= #{todayStart}
           and approve_time &lt; #{nextDayStart}
@@ -83,15 +86,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countPendingByVisitor" resultType="int">
         select count(1) from visitor_application
         where visitor_id = #{visitorId} and status = '0'
+          and del_flag = '0'
           and start_time &lt;= #{now}
           and end_time &gt;= #{now}
     </select>
 
-    <!-- 审批回写：仅未审批(0)可更新，防重复审批（时间由应用层传入） -->
+    <!-- 审批回写：仅未审批(0)可更新，防重复审批（时间由应用层传入）；已撤销(1)的记录不可再审批 -->
     <update id="updateApproveStatus">
         update visitor_application
         set status = #{status}, approve_time = #{approveTime}, update_time = #{updateTime}
-        where application_id = #{applicationId} and status = '0'
+        where application_id = #{applicationId} and status = '0' and del_flag = '0'
+    </update>
+
+    <!-- 逻辑删除：仅本人(visitor_id)且待审批(0)且未删除(0)可删，与审批并发时由 status='0' 兜底 -->
+    <update id="deleteApplicationById">
+        update visitor_application
+        set del_flag = '1', update_time = #{updateTime}
+        where application_id = #{applicationId} and visitor_id = #{visitorId}
+          and status = '0' and del_flag = '0'
     </update>
 
 </mapper>

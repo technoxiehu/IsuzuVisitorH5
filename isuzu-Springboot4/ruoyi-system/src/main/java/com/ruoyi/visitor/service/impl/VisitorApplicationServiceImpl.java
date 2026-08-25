@@ -473,6 +473,34 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     }
 
     /**
+     * 删除待审批申请单（逻辑删除 del_flag='1'；仅本人可删，与审批并发时由 status='0' 条件更新兜底）
+     */
+    @Override
+    public void deleteApplication(String visitorId, String applicationId)
+    {
+        if (StringUtils.isEmpty(visitorId) || !UUID_PATTERN.matcher(visitorId).matches())
+        {
+            throw new ServiceException("访客ID格式不正确", 400);
+        }
+        if (StringUtils.isEmpty(applicationId) || !UUID_PATTERN.matcher(applicationId).matches())
+        {
+            throw new ServiceException("申请单ID格式不正确", 400);
+        }
+        int rows = visitorApplicationMapper.deleteApplicationById(applicationId, visitorId, new Date());
+        if (rows > 0)
+        {
+            return;
+        }
+        // 影响行数为 0：区分「已审批」与「已撤销/不存在」，给访客明确反馈
+        VisitorApplication exist = visitorApplicationMapper.selectApplicationById(applicationId);
+        if (exist == null || "1".equals(exist.getDelFlag()))
+        {
+            throw new ServiceException("申请单不存在或已撤销", 400);
+        }
+        throw new ServiceException("该申请单已审批，无法删除", 400);
+    }
+
+    /**
      * 解析 token 并查询申请单
      */
     private VisitorApplication getApplicationByToken(String token)
@@ -490,6 +518,11 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         if (application == null)
         {
             throw new ServiceException("链接无效或已过期", 401);
+        }
+        // 访客已撤销该申请单（逻辑删除）：区分提示，避免与「链接无效」混淆
+        if ("1".equals(application.getDelFlag()))
+        {
+            throw new ServiceException("该申请单已撤销", 602);
         }
         return application;
     }

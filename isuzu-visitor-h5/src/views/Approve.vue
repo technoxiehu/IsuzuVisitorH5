@@ -13,7 +13,7 @@ defineOptions({ name: 'ApproveView' })
 const route = useRoute()
 const router = useRouter()
 
-// 状态：loading 加载中 / ready 可审批 / done 已完成审批 / invalid 链接无效 / finished 审批完成
+// 状态：loading 加载中 / ready 可审批 / done 已完成审批 / revoked 申请单已撤销 / invalid 链接无效 / finished 审批完成
 const pageState = ref('loading')
 const detail = ref(null)
 const submitting = ref(false)
@@ -31,8 +31,10 @@ onMounted(async () => {
     detail.value = res.data.application
     pageState.value = 'ready'
   } catch (err) {
-    // 601 已完成审批 / 401 链接无效（拦截器已 Toast 提示）
-    pageState.value = err?.code === 601 ? 'done' : 'invalid'
+    // 601 已完成审批 / 602 申请单已撤销 / 401 链接无效（拦截器已 Toast 提示）
+    if (err?.code === 601) pageState.value = 'done'
+    else if (err?.code === 602) pageState.value = 'revoked'
+    else pageState.value = 'invalid'
   }
 })
 
@@ -62,6 +64,9 @@ async function onApprove(action) {
 
     <!-- 已审批：不渲染审批操作区 -->
     <van-empty v-else-if="pageState === 'done'" image="error" description="该申请单已完成审批" />
+
+    <!-- 访客已撤销申请单 -->
+    <van-empty v-else-if="pageState === 'revoked'" image="error" description="该申请单已撤销" />
 
     <!-- 审批完成 -->
     <div v-else-if="pageState === 'finished'" class="state-finished">

@@ -86,4 +86,16 @@ public interface VisitorApplicationMapper
      */
     public int updateApproveStatus(@Param("applicationId") String applicationId, @Param("status") String status,
             @Param("approveTime") Date approveTime, @Param("updateTime") Date updateTime);
+
+    /**
+     * 逻辑删除待审批申请单（条件更新：仅本人且状态为待审批且未删除时可删除，
+     * 与审批并发时由 status='0' 兜底——审批先完成则影响行数为 0）
+     *
+     * @param applicationId 申请单号
+     * @param visitorId 访客ID（归属校验，只能删自己的）
+     * @param updateTime 删除时间
+     * @return 影响行数
+     */
+    public int deleteApplicationById(@Param("applicationId") String applicationId, @Param("visitorId") String visitorId,
+            @Param("updateTime") Date updateTime);
 }

@@ -1,9 +1,9 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { useVisitorStore } from '@/stores/visitor'
-import { getApplicationList, getUser } from '@/api/visitor'
+import { deleteApplication, getApplicationList, getUser } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 import { toAvatarUrl } from '@/utils/avatar'
 import { maskIdCard } from '@/utils/mask'
@@ -104,6 +104,25 @@ function onProfileClick() {
   router.push('/user-info?mode=edit')
 }
 
+// 左滑删除待审批申请单（PRD v1.9）：二次确认后逻辑删除，成功后本地移除并即时刷新
+async function onDelete(record) {
+  try {
+    await showConfirmDialog({
+      title: '删除申请单',
+      message: '确定删除这条待审批的访问申请吗？删除后需重新提交申请。',
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await deleteApplication(store.visitorId, record.applicationId)
+    showToast('删除成功')
+    store.records = store.records.filter((r) => r.applicationId !== record.applicationId)
+  } catch {
+    // 拦截器已提示（如该单已审批无法删除）
+  }
+}
+
 // 非有效记录的副文案（PRD v1.5：列表展示全部记录，门卫仅认「通过且有效期内」）
 function effectiveTip(record) {
   const now = new Date()
@@ -143,22 +162,29 @@ function effectiveTip(record) {
     <template v-else>
       <van-empty v-if="!store.records.length" image="search" description=" " />
       <div v-else class="record-list">
-        <div v-for="record in store.records" :key="record.applicationId" class="record-card"
-          :class="{ 'record-inactive': record.effective === false }">
-          <div class="record-main">
-            <div class="record-host">被访人：{{ record.hostName }}</div>
-            <div class="record-time">访问截止：{{ formatDateTime(new Date(record.endTime.replace(' ', 'T'))) }}
-              <span v-if="record.effective === false" class="record-tip">{{ effectiveTip(record) }}</span>
+        <van-swipe-cell v-for="record in store.records" :key="record.applicationId">
+          <div class="record-card" :class="{ 'record-inactive': record.effective === false }">
+            <div class="record-main">
+              <div class="record-host">被访人：{{ record.hostName }}</div>
+              <div class="record-time">访问截止：{{ formatDateTime(new Date(record.endTime.replace(' ', 'T'))) }}
+                <span v-if="record.effective === false" class="record-tip">{{ effectiveTip(record) }}</span>
+              </div>
+              <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；老数据无名单时跳过） -->
+              <div v-if="record.companions?.length" class="record-companions">
+                <CompanionList :companions="record.companions" />
+              </div>
             </div>
-            <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；老数据无名单时跳过） -->
-            <div v-if="record.companions?.length" class="record-companions">
-              <CompanionList :companions="record.companions" />
-            </div>
+            <van-tag :type="statusInfo(record)?.type" round>
+              {{ statusInfo(record)?.text }}
+            </van-tag>
           </div>
-          <van-tag :type="statusInfo(record)?.type" round>
-            {{ statusInfo(record)?.text }}
-          </van-tag>
-        </div>
+          <!-- 仅待审批记录可左滑删除（PRD v1.9） -->
+          <template #right v-if="record.status === '0'">
+            <van-button square type="danger" class="record-delete" @click="onDelete(record)">
+              删除
+            </van-button>
+          </template>
+        </van-swipe-cell>
       </div>
     </template>
   </div>
@@ -245,6 +271,11 @@ function effectiveTip(record) {
 
 .record-inactive {
   opacity: 0.55;
+}
+
+.record-delete {
+  height: 100%;
+  width: 72px;
 }
 
 .record-companions {

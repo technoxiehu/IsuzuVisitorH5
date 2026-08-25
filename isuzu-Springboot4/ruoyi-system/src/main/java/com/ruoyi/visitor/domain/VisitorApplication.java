@@ -56,6 +56,9 @@ public class VisitorApplication
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date updateTime;
 
+    /** 删除标志(0存在 1已撤销/删除，逻辑删除) */
+    private String delFlag;
+
     /** 随行人员名单（提交入参 + 列表/详情返回，见 docs/03_接口契约.md §3.6） */
     private List<VisitorCompanion> companions;
 
@@ -179,6 +182,16 @@ public class VisitorApplication
     public void setUpdateTime(Date updateTime)
     {
         this.updateTime = updateTime;
+    }
+
+    public String getDelFlag()
+    {
+        return delFlag;
+    }
+
+    public void setDelFlag(String delFlag)
+    {
+        this.delFlag = delFlag;
     }
 
     public List<VisitorCompanion> getCompanions()

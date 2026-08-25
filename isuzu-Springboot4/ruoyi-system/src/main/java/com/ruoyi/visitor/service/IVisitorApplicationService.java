@@ -60,4 +60,12 @@ public interface IVisitorApplicationService
      * @param action 审批动作（approve 批准 / reject 拒绝）
      */
     public void approve(String token, String action);
+
+    /**
+     * 删除待审批申请单（逻辑删除 del_flag='1'，仅本人可删；已审批/已撤销/不存在时报错）
+     *
+     * @param visitorId 访客ID（归属校验）
+     * @param applicationId 申请单号
+     */
+    public void deleteApplication(String visitorId, String applicationId);
 }

@@ -97,7 +97,7 @@ async function onApprove(action) {
           拒绝
         </van-button>
         <van-button type="success" block round :loading="submitting" @click="onApprove('approve')">
-          批准
+          同意
         </van-button>
       </div>
     </template>

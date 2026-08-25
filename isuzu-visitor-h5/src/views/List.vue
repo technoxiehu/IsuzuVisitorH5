@@ -135,23 +135,7 @@ function effectiveTip(record) {
 </script>
 
 <template>
-  <div class="page">
-    <!-- 顶部用户信息区：门卫核验身份依据，醒目展示防冒用（PRD §5.5） -->
-    <div class="profile-card" @click="onProfileClick">
-      <van-image round width="64" height="64" :src="toAvatarUrl(store.userInfo?.avatar)" fit="cover">
-        <template #error><van-icon name="user-o" size="40" /></template>
-      </van-image>
-      <div class="profile-info">
-        <div class="profile-name">{{ store.userInfo?.name || '—' }}</div>
-        <div class="profile-company">{{ store.userInfo?.company || '' }}</div>
-        <!-- 身份证号（脱敏，门卫对照实体证件核验；后端已脱敏，maskIdCard 幂等） -->
-        <div class="profile-idcard">身份证：{{ store.userInfo?.idCard ? maskIdCard(store.userInfo.idCard) : '—' }}</div>
-        <!-- 车牌号（非必填，门卫核验车辆；无则隐藏） -->
-        <div v-if="store.userInfo?.plateNo" class="profile-idcard">车牌号：{{ store.userInfo.plateNo }}</div>
-      </div>
-      <van-icon name="arrow" color="#999" />
-    </div>
-
+  <div class="page list-page">
     <!-- 当前时间戳（防截图冒用，PRD v1.3 §5.5） -->
     <div class="timestamp">当前时间：{{ nowTime }}</div>
 
@@ -187,18 +171,61 @@ function effectiveTip(record) {
         </van-swipe-cell>
       </div>
     </template>
+
+    <!-- 访客信息（固定屏幕底部吸底栏，我的信息修改入口，PRD §5.5） -->
+    <div class="profile-fixed">
+      <div class="profile-section-title">访客信息</div>
+      <div class="profile-card" @click="onProfileClick">
+        <van-image round width="64" height="64" :src="toAvatarUrl(store.userInfo?.avatar)" fit="cover">
+          <template #error><van-icon name="user-o" size="40" /></template>
+        </van-image>
+        <div class="profile-info">
+          <div class="profile-name">{{ store.userInfo?.name || '—' }}</div>
+          <div class="profile-company">{{ store.userInfo?.company || '' }}</div>
+          <!-- 身份证号（脱敏，门卫对照实体证件核验；后端已脱敏，maskIdCard 幂等） -->
+          <div class="profile-idcard">身份证：{{ store.userInfo?.idCard ? maskIdCard(store.userInfo.idCard) : '—' }}</div>
+          <!-- 车牌号（非必填，门卫核验车辆；无则隐藏） -->
+          <div v-if="store.userInfo?.plateNo" class="profile-idcard">车牌号：{{ store.userInfo.plateNo }}</div>
+        </div>
+        <van-icon name="arrow" color="#999" />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 页面底部留白，避免吸底栏遮挡最后一条记录 */
+.list-page {
+  padding-bottom: 160px;
+}
+
+/* 访客信息吸底栏（固定屏幕底部，我的信息修改入口） */
+.profile-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: var(--page-bg);
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+/* 访客信息卡片（蓝色细边框，区别于普通记录卡片） */
 .profile-card {
   display: flex;
   align-items: center;
   gap: 12px;
   background: var(--card-bg);
+  border: 1px solid #4a90e2;
   border-radius: var(--radius-lg);
-  padding: 16px;
-  margin-bottom: 8px;
+  padding: 14px 16px;
 }
 
 .profile-info {

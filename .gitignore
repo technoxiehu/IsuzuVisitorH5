@@ -10,3 +10,6 @@ isuzu-Springboot4/ruoyi-admin/src/main/resources/application-druid.yml
 /Third-party-platform/NetEase-Enterprise-Email-Open-Platform-V1.15/qiye-open-platform-demo/target
 /docs/Business‑related
 /.playwright-mcp
+
+# 识图配置（vision.js 使用，含 API Key，勿提交）
+/.env

@@ -13,9 +13,13 @@ const EXIT_MS = 600 // 揭幕离场动画时长
 const scenes = ['/splash/aerial.jpg', '/splash/gate.jpg', '/splash/front.jpg']
 const imgSrc = scenes[Math.floor(Math.random() * scenes.length)]
 
-// 标题逐字浮现（delay 与 CSS 时间轴对齐）
-const titleChars = '五十铃发动机访客预约'.split('')
-const charDelay = (i) => `${350 + i * 90}ms`
+// 标题两行逐字浮现（delay 与 CSS 时间轴对齐）：行内逐字、行间依次
+const titleLines = ['江西五十铃发动机厂', '访客预约']
+const charDelay = (lineIdx, charIdx) => {
+  let base = 350
+  for (let i = 0; i < lineIdx; i++) base += titleLines[i].length * 90
+  return `${base + charIdx * 90}ms`
+}
 
 const leaving = ref(false)
 let showTimer = null
@@ -47,11 +51,17 @@ onUnmounted(() => {
       <div class="splash-shade"></div>
       <h1 class="splash-title">
         <span
-          v-for="(ch, i) in titleChars"
-          :key="i"
-          :style="{ animationDelay: charDelay(i) }"
-          >{{ ch }}</span
+          v-for="(line, lineIdx) in titleLines"
+          :key="lineIdx"
+          :class="['splash-title-line', lineIdx === 0 ? 'splash-title-line--main' : 'splash-title-line--sub']"
         >
+          <span
+            v-for="(ch, i) in line"
+            :key="i"
+            :style="{ animationDelay: charDelay(lineIdx, i) }"
+            >{{ ch }}</span
+          >
+        </span>
       </h1>
       <p class="splash-subtitle">欢迎光临</p>
     </div>
@@ -113,22 +123,40 @@ onUnmounted(() => {
   );
 }
 
-/* 标题（白字逐字上浮，顶部居中） */
+/* 标题（白字两行逐字上浮，顶部居中） */
 .splash-title {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 18vh);
+  top: calc(env(safe-area-inset-top, 0px) + 16vh);
   left: 0;
   right: 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   margin: 0;
-  font-size: 26px;
   font-weight: 700;
   letter-spacing: 2px;
   color: #fff;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
-.splash-title span {
+
+.splash-title-line {
+  display: block;
+  white-space: nowrap;
+}
+
+/* 第一行：厂名主标题 */
+.splash-title-line--main {
+  font-size: 30px;
+}
+
+/* 第二行：功能副标题 */
+.splash-title-line--sub {
+  font-size: 22px;
+  letter-spacing: 4px;
+}
+
+.splash-title-line span {
   opacity: 0;
   transform: translateY(14px);
   animation: char-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -221,7 +249,7 @@ onUnmounted(() => {
 /* 尊重系统减弱动态效果设置：瞬时完成入场动画，保留静态画面 */
 @media (prefers-reduced-motion: reduce) {
   .splash-img,
-  .splash-title span,
+  .splash-title-line span,
   .splash-subtitle,
   .splash-skip,
   .splash-progress i {

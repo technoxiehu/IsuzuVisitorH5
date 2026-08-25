@@ -43,8 +43,10 @@ onMounted(async () => {
       router.replace('/list?toast=blocked')
       return
     }
-    const hasPendingOrApproved = (records || []).some((r) => r.status === '0' || r.status === '1')
-    if ((records || []).length === 0) {
+    // 有效记录：当前时刻落在访问窗口内（effective 由后端按应用服务器时间计算，PRD v1.5）
+    const effectiveRecords = (records || []).filter((r) => r.effective !== false)
+    const hasPendingOrApproved = effectiveRecords.some((r) => r.status === '0' || r.status === '1')
+    if (effectiveRecords.length === 0) {
       router.replace('/application')
     } else if (hasPendingOrApproved) {
       router.replace('/list')

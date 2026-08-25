@@ -51,7 +51,7 @@ onUnmounted(() => {
           >{{ ch }}</span
         >
       </h1>
-      <p class="splash-subtitle">访客专属</p>
+      <p class="splash-subtitle">欢迎光临</p>
     </div>
 
     <button class="splash-skip" :disabled="leaving" @click="leave">跳过</button>

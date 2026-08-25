@@ -67,12 +67,14 @@ public interface VisitorApplicationMapper
             @Param("nextDayStart") Date nextDayStart);
 
     /**
-     * 统计访客待审批（status='0'）申请单数（防重复提交兜底，docs/03_接口契约.md §3.6）
+     * 统计访客当前时刻落在访问窗口内的待审批（status='0'）申请单数
+     * （防重复提交兜底，与 PRD §5.1.5 分流规则同构；时间由应用层传入，docs/03_接口契约.md §3.6）
      *
      * @param visitorId 访客ID
+     * @param now 当前时刻（应用服务器时间）
      * @return 待审批申请单数
      */
-    public int countPendingByVisitor(String visitorId);
+    public int countPendingByVisitor(@Param("visitorId") String visitorId, @Param("now") Date now);
 
     /**
      * 审批回写（条件更新：仅状态为未审批时可更新，防重复审批）

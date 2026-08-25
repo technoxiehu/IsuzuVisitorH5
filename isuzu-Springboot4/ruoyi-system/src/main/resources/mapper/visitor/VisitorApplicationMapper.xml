@@ -79,10 +79,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and approve_time &lt; #{nextDayStart}
     </select>
 
-    <!-- 待审批申请单数：防重复提交兜底（同一访客至多一张待审批单，PRD §5.1.5 分流规则同构） -->
-    <select id="countPendingByVisitor" parameterType="String" resultType="int">
+    <!-- 待审批申请单数：防重复提交兜底（当前时刻落在访问窗口内的待审批单，PRD §5.1.5 分流规则同构；时间由应用层传入） -->
+    <select id="countPendingByVisitor" resultType="int">
         select count(1) from visitor_application
         where visitor_id = #{visitorId} and status = '0'
+          and start_time &lt;= #{now}
+          and end_time &gt;= #{now}
     </select>
 
     <!-- 审批回写：仅未审批(0)可更新，防重复审批（时间由应用层传入） -->

@@ -88,6 +88,18 @@ const statusMap = computed(() => ({
   2: { text: '拒绝', type: 'danger' },
 }))
 
+function isExpired(record) {
+  return new Date(record.endTime.replace(' ', 'T')) < new Date()
+}
+
+// 记录访问截止后一律显示「完成」（已完结，门卫不再放行）
+function statusInfo(record) {
+  if (isExpired(record)) {
+    return { text: '完成', type: 'default' }
+  }
+  return statusMap.value[record.status]
+}
+
 function onProfileClick() {
   router.push('/user-info?mode=edit')
 }
@@ -141,8 +153,8 @@ function effectiveTip(record) {
               <CompanionList :companions="record.companions" />
             </div>
           </div>
-          <van-tag :type="statusMap[record.status]?.type" round>
-            {{ statusMap[record.status]?.text }}
+          <van-tag :type="statusInfo(record)?.type" round>
+            {{ statusInfo(record)?.text }}
           </van-tag>
         </div>
       </div>

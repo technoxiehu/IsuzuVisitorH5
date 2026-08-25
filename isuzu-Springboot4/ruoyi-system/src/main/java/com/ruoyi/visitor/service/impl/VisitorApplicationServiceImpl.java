@@ -118,8 +118,8 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
             throw new ServiceException("审批人拒绝近期访问，谢谢。", 601);
         }
 
-        // 待审批兜底查重：同一访客至多一张待审批单（与 PRD §5.1.5 分流规则同构；拦截刷新/多标签页重进场景）
-        if (visitorApplicationMapper.countPendingByVisitor(application.getVisitorId()) > 0)
+        // 待审批兜底查重：当前时刻落在访问窗口内的待审批单（与 PRD §5.1.5 分流规则同构；拦截刷新/多标签页重进场景）
+        if (visitorApplicationMapper.countPendingByVisitor(application.getVisitorId(), new Date()) > 0)
         {
             throw new ServiceException("您已有一份待审批的申请，请勿重复提交", 601);
         }

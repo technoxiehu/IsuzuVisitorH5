@@ -141,8 +141,6 @@ async function onSubmit() {
       <!-- 身份证号 -->
       <van-field
         v-model="form.idCard"
-        type="text"
-        inputmode="numeric"
         label="身份证号"
         placeholder="请输入18位身份证号"
         maxlength="18"

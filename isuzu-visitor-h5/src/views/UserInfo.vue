@@ -185,7 +185,7 @@ async function onSubmit() {
     </div>
 
     <van-button type="primary" block round :loading="submitting" @click="onSubmit">
-      {{ isEdit ? '保存修改' : '提交' }}
+      {{ isEdit ? '保存修改' : '预约' }}
     </van-button>
   </div>
 </template>

@@ -4,7 +4,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 defineOptions({ name: 'SplashScreen' })
 
 // 首屏开屏动画：每次进入随机展示一张厂区实景图，5 秒后自动揭幕，可点击「跳过」提前结束
-const emit = defineEmits(['finish'])
+const emit = defineEmits(['leaving', 'finish'])
 
 const SHOW_MS = 3000 // 动画展示时长
 const EXIT_MS = 600 // 揭幕离场动画时长
@@ -24,6 +24,8 @@ let exitTimer = null
 function leave() {
   if (leaving.value) return
   leaving.value = true
+  // 新增：离场动画开始的瞬间通知 App（进场须知需在淡出期间提前就位，防止底层页面透出）
+  emit('leaving')
   exitTimer = setTimeout(() => emit('finish'), EXIT_MS)
 }
 

@@ -62,6 +62,11 @@ function confirm() {
   background: var(--page-bg);
 }
 
+/* 开屏离场淡出期间：置于 Splash(9999) 之下、底层页面之上，遮挡底层路由页防透出 */
+.notice--under-splash {
+  z-index: 9998;
+}
+
 .notice-header {
   padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
   padding-bottom: 12px;

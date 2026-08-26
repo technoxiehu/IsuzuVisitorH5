@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import { useVisitorStore } from '@/stores/visitor'
 import { registerUser, updateUser, uploadAvatar } from '@/api/visitor'
 import { toAvatarUrl } from '@/utils/avatar'
@@ -16,6 +17,8 @@ const store = useVisitorStore()
 const isEdit = ref(false)
 const form = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
 const errors = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
+// 编辑模式原始值快照（保存前未修改检测的基准，Application.vue 同款逻辑）
+const original = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
 const fileList = ref([])
 const submitting = ref(false)
 
@@ -42,6 +45,13 @@ onMounted(async () => {
     if (form.avatar) {
       fileList.value = [{ url: toAvatarUrl(form.avatar) }]
     }
+    // 快照原始值（保存前未修改检测的基准）
+    original.name = form.name
+    original.phone = form.phone
+    original.idCard = form.idCard
+    original.company = form.company
+    original.plateNo = form.plateNo
+    original.avatar = form.avatar
   }
 })
 
@@ -83,8 +93,26 @@ function validate() {
   )
 }
 
+// 保存前检查：是否真实修改了内容（按提交口径 trim 归一化比较，Application.vue 同款逻辑）
+function isModified() {
+  return (
+    form.name.trim() !== original.name.trim() ||
+    form.phone !== original.phone ||
+    form.idCard !== original.idCard ||
+    form.company.trim() !== original.company.trim() ||
+    form.plateNo.trim() !== original.plateNo.trim() ||
+    form.avatar !== original.avatar
+  )
+}
+
 async function onSubmit() {
   if (!validate()) return
+  // 编辑模式：未实际修改任何内容时不走后台修改流程，提示后直接返回列表
+  if (isEdit.value && !isModified()) {
+    showToast('报告，保持原装！😎')
+    router.replace('/list')
+    return
+  }
   submitting.value = true
   const data = {
     visitorId: store.visitorId,

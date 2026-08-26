@@ -60,3 +60,8 @@ export function approve(token, action) {
 export function deleteApplication(visitorId, applicationId) {
   return request.delete('/visitor/application', { data: { visitorId, applicationId } })
 }
+
+/** §3.12 申请单详情查询（本人回显修改用；仅待审批可查，随行人员身份证完整返回） */
+export function getApplicationDetail(visitorId, applicationId) {
+  return request.get('/visitor/application/detail', { params: { visitorId, applicationId } })
+}

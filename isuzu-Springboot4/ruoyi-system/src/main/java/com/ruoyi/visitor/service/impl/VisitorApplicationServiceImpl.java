@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,6 +80,10 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     @Autowired
     private RedisCache redisCache;
 
+    /** 审批邮件异步发送线程池（Spring Boot 自动配置的 applicationTaskExecutor） */
+    @Autowired
+    private TaskExecutor taskExecutor;
+
     /**
      * 按姓名关键字查询被访人
      */
@@ -108,6 +113,13 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     public String submitApplication(VisitorApplication application)
     {
         checkSubmit(application);
+
+        // 修改链路（v1.9）：携带 replaceApplicationId 时先撤销原待审批单（逻辑删除），再走新建流程；
+        // 须先于待审批兜底查重执行，否则原单仍落在访问窗口内会误拦截；与审批并发时由 status='0' 条件更新兜底
+        if (StringUtils.isNotEmpty(application.getReplaceApplicationId()))
+        {
+            replacePending(application);
+        }
 
         // 当日拒绝数达到上限，禁止再提交（入口拦截的后端兜底；当日区间按应用服务器时间统计）
         Date todayStart = DateUtils.parseDate(DateUtils.getDate());
@@ -142,6 +154,30 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     }
 
     /**
+     * 撤销原待审批申请单（修改链路的替换前置：逻辑删除，仅本人且待审批且未删除可删；
+     * 影响行数为 0 时区分「已审批」（601）与「已撤销/不存在」（400），给出明确反馈）
+     */
+    private void replacePending(VisitorApplication application)
+    {
+        String oldId = application.getReplaceApplicationId();
+        if (!UUID_PATTERN.matcher(oldId).matches())
+        {
+            throw new ServiceException("申请单ID格式不正确", 400);
+        }
+        int rows = visitorApplicationMapper.deleteApplicationById(oldId, application.getVisitorId(), new Date());
+        if (rows > 0)
+        {
+            return;
+        }
+        VisitorApplication exist = visitorApplicationMapper.selectApplicationById(oldId);
+        if (exist == null || "1".equals(exist.getDelFlag()))
+        {
+            throw new ServiceException("申请单不存在或已撤销", 400);
+        }
+        throw new ServiceException("该申请单已审批，无法修改", 601);
+    }
+
+    /**
      * 原子消费一次性提交令牌：DEL 返回 true 即抢占成功；
      * 未抢到时查墓碑区分「已使用」（601 重复提交）与「过期/非法」（400 请重新获取）
      */
@@ -167,7 +203,8 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
     }
 
     /**
-     * 事务提交后再发审批邮件（无事务同步时降级为直接发送）
+     * 事务提交后异步发送审批邮件（提交线程不再等待 SMTP 往返，接口即时返回；
+     * 发送失败不影响申请单提交，VisitorMailService 内部已兜底；无事务同步时降级为直接异步提交）
      */
     private void sendMailAfterCommit(VisitorApplication application)
     {
@@ -179,13 +216,13 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
                 @Override
                 public void afterCommit()
                 {
-                    mailTask.run();
+                    taskExecutor.execute(mailTask);
                 }
             });
         }
         else
         {
-            mailTask.run();
+            taskExecutor.execute(mailTask);
         }
     }
 
@@ -274,6 +311,11 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         {
             throw new ServiceException("结束时间必须晚于开始时间", 400);
         }
+        // 访问跨度不超过 7 天（含首尾，日期粒度；结束日期最晚 = 开始日期 + 6 天，v1.10）
+        if (DateUtils.differentDaysByMillisecond(application.getStartTime(), application.getEndTime()) > 6)
+        {
+            throw new ServiceException("访问时间不能超过7天", 400);
+        }
         if (StringUtils.isEmpty(application.getReason()))
         {
             throw new ServiceException("访问事由不能为空", 400);
@@ -344,6 +386,41 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         fillCompanions(records);
         result.put("records", records);
         return result;
+    }
+
+    /**
+     * 申请单详情（本人回显修改用；仅未审批且未撤销的申请单可查，
+     * 随行人员身份证号完整返回——本人设备回显，与列表/审批页的脱敏口径区分）
+     */
+    @Override
+    public VisitorApplication getApplicationDetail(String visitorId, String applicationId)
+    {
+        if (StringUtils.isEmpty(visitorId) || !UUID_PATTERN.matcher(visitorId).matches())
+        {
+            throw new ServiceException("访客ID格式不正确", 400);
+        }
+        if (StringUtils.isEmpty(applicationId) || !UUID_PATTERN.matcher(applicationId).matches())
+        {
+            throw new ServiceException("申请单ID格式不正确", 400);
+        }
+        VisitorApplication application = visitorApplicationMapper.selectApplicationById(applicationId);
+        if (application == null || "1".equals(application.getDelFlag()))
+        {
+            throw new ServiceException("申请单不存在或已撤销", 400);
+        }
+        if (!visitorId.equals(application.getVisitorId()))
+        {
+            throw new ServiceException("无权查看该申请单", 400);
+        }
+        // 仅待审批可进入修改回显；已审批时拦截（前端列表可能未刷新，点到已审批单需兜底）
+        if (!"0".equals(application.getStatus()))
+        {
+            throw new ServiceException("该申请单已完成审批", 601);
+        }
+        List<VisitorCompanion> companions = visitorCompanionMapper
+                .selectListByApplicationIds(Collections.singletonList(applicationId));
+        application.setCompanions(companions);
+        return application;
     }
 
     /**

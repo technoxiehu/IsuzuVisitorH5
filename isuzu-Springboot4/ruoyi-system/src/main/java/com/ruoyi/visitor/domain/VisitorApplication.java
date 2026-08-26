@@ -68,6 +68,9 @@ public class VisitorApplication
     /** 一次性提交令牌（防重复提交，提交时由前端携带，非表字段） */
     private String submitToken;
 
+    /** 待撤销的原申请单号（修改链路 v1.9：提交时携带则先逻辑删除原单再新建，非表字段） */
+    private String replaceApplicationId;
+
     public String getApplicationId()
     {
         return applicationId;
@@ -222,6 +225,16 @@ public class VisitorApplication
     public void setSubmitToken(String submitToken)
     {
         this.submitToken = submitToken;
+    }
+
+    public String getReplaceApplicationId()
+    {
+        return replaceApplicationId;
+    }
+
+    public void setReplaceApplicationId(String replaceApplicationId)
+    {
+        this.replaceApplicationId = replaceApplicationId;
     }
 
     @Override

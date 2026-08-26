@@ -104,6 +104,11 @@ function onProfileClick() {
   router.push('/user-info?mode=edit')
 }
 
+// 修改待审批申请单（PRD v1.9）：跳转申请单页编辑模式，提交时后端撤销原单并新建
+function onEdit(record) {
+  router.push({ path: '/application', query: { applicationId: record.applicationId } })
+}
+
 // 左滑删除待审批申请单（PRD v1.9）：二次确认后逻辑删除，成功后本地移除并即时刷新
 async function onDelete(record) {
   try {
@@ -150,20 +155,23 @@ function effectiveTip(record) {
           <div class="record-card" :class="{ 'record-inactive': record.effective === false }">
             <div class="record-main">
               <div class="record-host">被访人：{{ record.hostName }}</div>
-              <div class="record-time">访问截止：{{ formatDateTime(new Date(record.endTime.replace(' ', 'T'))) }}
+              <div class="record-time">访问截止：{{ (record.endTime || '').slice(0, 10) }}
                 <span v-if="record.effective === false" class="record-tip">{{ effectiveTip(record) }}</span>
               </div>
-              <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；老数据无名单时跳过） -->
-              <div v-if="record.companions?.length" class="record-companions">
-                <CompanionList :companions="record.companions" />
+              <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；固定显示标题与名单/空态） -->
+              <div class="record-companions">
+                <CompanionList :companions="record.companions || []" />
               </div>
             </div>
             <van-tag :type="statusInfo(record)?.type" round>
               {{ statusInfo(record)?.text }}
             </van-tag>
           </div>
-          <!-- 仅待审批记录可左滑删除（PRD v1.9） -->
+          <!-- 仅待审批记录可左滑修改/删除（PRD v1.9） -->
           <template #right v-if="record.status === '0'">
+            <van-button square type="primary" class="record-edit" @click="onEdit(record)">
+              修改
+            </van-button>
             <van-button square type="danger" class="record-delete" @click="onDelete(record)">
               删除
             </van-button>
@@ -298,6 +306,11 @@ function effectiveTip(record) {
 
 .record-inactive {
   opacity: 0.55;
+}
+
+.record-edit {
+  height: 100%;
+  width: 72px;
 }
 
 .record-delete {

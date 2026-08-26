@@ -141,10 +141,10 @@ function effectiveTip(record) {
 
 <template>
   <div class="page list-page">
-    <!-- 当前时间戳（防截图冒用，PRD v1.3 §5.5） -->
-    <div class="timestamp">当前时间：{{ nowTime }}</div>
-
     <h2 class="page-title">访问预约记录</h2>
+
+    <!-- 当前时间戳（防截图冒用，PRD v1.3 §5.5；置于标题下方，保证标题行距顶与其余页面一致） -->
+    <div class="timestamp">当前时间：{{ nowTime }}</div>
 
     <!-- 有效审批记录列表 -->
     <van-loading v-if="loading" size="24px" class="list-loading" />
@@ -263,7 +263,7 @@ function effectiveTip(record) {
   text-align: center;
   font-size: 12px;
   color: var(--color-text-secondary);
-  margin-bottom: 8px;
+  margin: 0 0 12px;
   font-variant-numeric: tabular-nums;
 }
 

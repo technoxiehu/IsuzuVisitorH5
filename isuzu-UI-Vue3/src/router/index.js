@@ -163,6 +163,15 @@ export const dynamicRoutes = [
         meta: { title: '修改生成配置', activeMenu: '/tool/gen' }
       }
     ]
+  },
+  {
+    // 门卫全屏大屏页（独立页面，无后台框架，供岗亭固定展示，须有门卫查看权限）
+    path: '/visitor/guard/fullscreen',
+    component: () => import('@/views/visitor/guard/fullscreen.vue'),
+    name: 'GuardFullscreen',
+    hidden: true,
+    permissions: ['visitor:guard:list'],
+    meta: { title: '来访核验大屏' }
   }
 ]
 

@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.visitor;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -75,5 +76,32 @@ public class VisitorApplicationController
             throw new ServiceException("访客ID不能为空", 400);
         }
         return AjaxResult.success(visitorApplicationService.selectValidList(visitorId));
+    }
+
+    /**
+     * 申请单详情（本人回显修改用；仅待审批且未撤销的申请单可查，已审批返回 601）
+     */
+    @GetMapping("/application/detail")
+    public AjaxResult detail(String visitorId, String applicationId)
+    {
+        if (StringUtils.isEmpty(visitorId))
+        {
+            throw new ServiceException("访客ID不能为空", 400);
+        }
+        if (StringUtils.isEmpty(applicationId))
+        {
+            throw new ServiceException("申请单ID不能为空", 400);
+        }
+        return AjaxResult.success(visitorApplicationService.getApplicationDetail(visitorId, applicationId));
+    }
+
+    /**
+     * 删除待审批申请单（逻辑删除 del_flag='1'，仅本人可删；已审批的不可删）
+     */
+    @DeleteMapping("/application")
+    public AjaxResult delete(@RequestBody Map<String, String> body)
+    {
+        visitorApplicationService.deleteApplication(body.get("visitorId"), body.get("applicationId"));
+        return AjaxResult.success("删除成功");
     }
 }

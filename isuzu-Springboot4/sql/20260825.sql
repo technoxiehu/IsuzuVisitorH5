@@ -1,0 +1,2 @@
+  alter table visitor add column plate_no varchar(10) default null comment '车牌号(非必填;仅汉字/字母/数字,≤10位)' after company;
+  alter table visitor_application add column del_flag char(1) not null default '0' comment '删除标志(0存在 1已撤销/删除,逻辑删除)' after update_time;

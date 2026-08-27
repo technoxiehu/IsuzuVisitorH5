@@ -103,6 +103,8 @@ public class SecurityConfig
                 requests.requestMatchers("/login", "/register", "/captchaImage").permitAll()
                     // 静态资源，可匿名访问
                     .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**.html", "/**.css", "/**.js", "/profile/**").permitAll()
+                    // 门卫电脑端接口：需若依登录鉴权（先匹配者生效，须在 /visitor/** permitAll 之前，见 docs/03_接口契约.md §4）
+                    .requestMatchers("/visitor/guard/**").authenticated()
                     // 访客登记系统 H5 接口，扫码即用，匿名访问（见 docs/03_接口契约.md）
                     .requestMatchers("/visitor/**").permitAll()
                     .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**", "/druid/**").permitAll()

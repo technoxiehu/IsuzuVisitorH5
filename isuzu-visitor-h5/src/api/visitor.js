@@ -31,27 +31,37 @@ export function searchHost(keyword) {
   return request.get('/visitor/host/search', { params: { keyword } })
 }
 
-/** §3.6 申请单提交（携带一次性提交令牌，重复提交返回 601） */
-export function submitApplication(data) {
-  return request.post('/visitor/application', data)
-}
-
-/** §3.6.1 获取一次性提交令牌（防重复提交） */
+/** §3.6 获取一次性提交令牌（防重复提交） */
 export function getSubmitToken() {
   return request.get('/visitor/application/submit-token')
 }
 
-/** §3.7 审批记录查询（有效记录 + 当日拒绝数） */
+/** §3.7 申请单提交（携带一次性提交令牌，重复提交返回 601） */
+export function submitApplication(data) {
+  return request.post('/visitor/application', data)
+}
+
+/** §3.8 审批记录查询（有效记录 + 当日拒绝数） */
 export function getApplicationList(visitorId) {
   return request.get('/visitor/application/list', { params: { visitorId } })
 }
 
-/** §3.8 审批详情查询（token 鉴权） */
+/** §3.9 审批详情查询（token 鉴权） */
 export function getApproveDetail(token) {
   return request.get('/visitor/approve/detail', { params: { token } })
 }
 
-/** §3.9 审批结果回写 */
+/** §3.10 审批结果回写 */
 export function approve(token, action) {
   return request.post('/visitor/approve', { token, action })
+}
+
+/** §3.11 删除待审批申请单（逻辑删除，仅本人可删） */
+export function deleteApplication(visitorId, applicationId) {
+  return request.delete('/visitor/application', { data: { visitorId, applicationId } })
+}
+
+/** §3.12 申请单详情查询（本人回显修改用；仅待审批可查，随行人员身份证完整返回） */
+export function getApplicationDetail(visitorId, applicationId) {
+  return request.get('/visitor/application/detail', { params: { visitorId, applicationId } })
 }

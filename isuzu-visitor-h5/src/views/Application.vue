@@ -3,15 +3,18 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useVisitorStore } from '@/stores/visitor'
-import { getSubmitToken, searchHost, submitApplication } from '@/api/visitor'
+import { getApplicationDetail, getSubmitToken, searchHost, submitApplication } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 
 defineOptions({ name: 'ApplicationView' })
 
-// 申请单页（PRD §5.3）+ 登记成功弹层（PRD §5.4）
+// 申请单页（PRD §5.3）+ 登记成功弹层（PRD §5.4）+ 编辑模式（PRD v1.9：列表页左滑「修改」进入）
 const route = useRoute()
 const router = useRouter()
 const store = useVisitorStore()
+
+// 编辑模式：带 applicationId 进入时回显原单，提交时后端撤销原单并新建（PRD v1.9）
+const editApplicationId = computed(() => route.query.applicationId || '')
 
 const form = reactive({ hostId: null, hostName: '', startTime: '', endTime: '', reason: '' })
 
@@ -96,57 +99,61 @@ function onHostConfirm() {
   showHostPopup.value = false
 }
 
-// ---- 日期时间选择（PickerGroup：日期 + 时间两个滚轮 tab，参照参考图 5.jpg）----
+// ---- 日期选择（PRD v1.10：以日期为最小单位，仅年月日，不选具体时间）----
+const MAX_VISIT_DAYS = 7 // 含首尾最多 7 天（结束日期最晚 = 开始日期 + 6 天，v1.10）
 const now = new Date()
 const minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 const maxDate = new Date(minDate.getFullYear() + 1, minDate.getMonth(), minDate.getDate())
 const nowStr = formatDateTime(new Date()) // 本地时间 yyyy-MM-dd HH:mm（勿用 toISOString，其返回 UTC 时间）
 
-const showTimePicker = ref(false)
-const timePickerType = ref('start')
+const showDatePicker = ref(false)
+const datePickerType = ref('start')
 const dateValue = ref(nowStr.split(' ')[0].split('-').map(Number)) // [y, m, d]
-const timeValue = ref(nowStr.split(' ')[1].split(':').map(Number)) // [hh, mm]
 
-function openTimePicker(type) {
-  timePickerType.value = type
+function openDatePicker(type) {
+  datePickerType.value = type
   // 打开时回填当前已选值或默认值
   const current = form[type === 'start' ? 'startTime' : 'endTime'] || nowStr
-  const [date, time] = current.split(' ')
-  dateValue.value = date.split('-').map(Number)
-  timeValue.value = time.split(':').map(Number)
-  showTimePicker.value = true
+  dateValue.value = current.split(' ')[0].split('-').map(Number)
+  showDatePicker.value = true
 }
 
-// PickerGroup confirm 参数：各子 Picker 的 confirm 结果数组（[日期结果, 时间结果]）
-function onTimeConfirm(items) {
-  const [y, m, d] = items[0].selectedValues
-  const [hh, mm] = items[1].selectedValues
-  const date = new Date(y, m - 1, d, hh, mm)
-  if (timePickerType.value === 'start') {
-    // 开始时间不能早于当前日期（PRD §5.3）
+// van-date-picker confirm 时 v-model（dateValue）已同步为选中值，直接读取
+function onDateConfirm() {
+  const [y, m, d] = dateValue.value
+  const date = new Date(y, m - 1, d)
+  if (datePickerType.value === 'start') {
+    // 开始日期不能早于当前日期（PRD §5.3）
     if (date < minDate) {
-      showToast('开始时间不能早于当前日期')
+      showToast('开始日期不能早于当前日期')
       return
     }
-    form.startTime = formatDateTime(date)
-    // 结束时间已选且不晚于新开始时间时清空
-    if (form.endTime && form.endTime <= form.startTime) {
+    form.startTime = formatDateTime(date).slice(0, 10)
+    // 结束日期早于新开始日期、或跨度超过 7 天（含首尾）时清空
+    const maxEnd = new Date(date.getTime() + (MAX_VISIT_DAYS - 1) * 86400000)
+    if (form.endTime && (form.endTime < form.startTime || new Date(`${form.endTime}T00:00:00`) > maxEnd)) {
       form.endTime = ''
     }
   } else {
-    // 结束时间必须晚于开始时间
+    // 结束日期不能早于开始日期（允许同日，v1.10）
     if (!form.startTime) {
-      showToast('请先选择开始时间')
-      showTimePicker.value = false
+      showToast('请先选择开始日期')
+      showDatePicker.value = false
       return
     }
-    if (date <= new Date(form.startTime.replace(' ', 'T'))) {
-      showToast('结束时间必须晚于开始时间')
+    const startDay = new Date(`${form.startTime}T00:00:00`)
+    if (date < startDay) {
+      showToast('结束日期不能早于开始日期')
       return
     }
-    form.endTime = formatDateTime(date)
+    // 访问跨度不能超过 7 天（含首尾，v1.10）
+    if (date > new Date(startDay.getTime() + (MAX_VISIT_DAYS - 1) * 86400000)) {
+      showToast('访问时间不能超过7天')
+      return
+    }
+    form.endTime = formatDateTime(date).slice(0, 10)
   }
-  showTimePicker.value = false
+  showDatePicker.value = false
 }
 
 // ---- 提交 ----
@@ -181,16 +188,24 @@ const canSubmit = computed(
 async function onSubmit() {
   // 同步守卫：loading 态重渲染前的双击窗口内拦截第二次点击
   if (submitting.value || !canSubmit.value || !submitToken.value) return
+  // 编辑模式：未实际修改任何内容时不走提交修改流程，提示后直接返回列表
+  if (editApplicationId.value && !isModified()) {
+    showToast('原汁原味，零改动✨')
+    router.replace('/list')
+    return
+  }
   submitting.value = true
   try {
     await submitApplication({
       visitorId: store.visitorId,
       hostId: form.hostId,
-      startTime: `${form.startTime}:00`,
-      endTime: `${form.endTime}:00`,
+      // 日期粒度：开始日 00:00:00、结束日 23:59:59（PRD v1.10，当天整天有效）
+      startTime: `${form.startTime} 00:00:00`,
+      endTime: `${form.endTime} 23:59:59`,
       reason: form.reason.trim(),
       companions: companions.value.map((c) => ({ name: c.name.trim(), idCard: c.idCard.trim() })),
       submitToken: submitToken.value,
+      replaceApplicationId: editApplicationId.value || undefined,
     })
     showSuccess.value = true
   } catch {
@@ -208,31 +223,73 @@ function onSuccessClose() {
   router.replace('/list')
 }
 
+// ---- 编辑模式：拉取原单详情回显（详情接口仅待审批可查；已审批/已撤销时提示并返回列表）----
+// 原始值快照（提交前未修改检测的基准）
+const original = reactive({ hostId: null, startTime: '', endTime: '', reason: '', companions: [] })
+
+async function loadEditData() {
+  try {
+    const res = await getApplicationDetail(store.visitorId, editApplicationId.value)
+    const d = res.data
+    form.hostId = d.hostId
+    form.hostName = d.hostName
+    // 接口返回 yyyy-MM-dd HH:mm:ss，表单为 yyyy-MM-dd（日期粒度）
+    form.startTime = (d.startTime || '').slice(0, 10)
+    form.endTime = (d.endTime || '').slice(0, 10)
+    form.reason = d.reason || ''
+    companions.value = (d.companions || []).map((c) => ({ name: c.name, idCard: c.idCard }))
+    // 快照原始值（副本，避免后续编辑污染基准）
+    original.hostId = d.hostId
+    original.startTime = form.startTime
+    original.endTime = form.endTime
+    original.reason = form.reason
+    original.companions = companions.value.map((c) => ({ ...c }))
+  } catch {
+    router.replace('/list')
+  }
+}
+
+// 编辑模式提交前检查：是否真实修改了内容（时间/事由/随行人员按提交口径归一化比较）
+function isModified() {
+  if (form.hostId !== original.hostId) return true
+  if (form.startTime !== original.startTime) return true
+  if (form.endTime !== original.endTime) return true
+  if (form.reason.trim() !== original.reason.trim()) return true
+  const norm = (list) => list.map((c) => ({ name: c.name.trim(), idCard: c.idCard.trim() }))
+  const cur = norm(companions.value)
+  const src = norm(original.companions)
+  if (cur.length !== src.length) return true
+  return cur.some((c, i) => c.name !== src[i].name || c.idCard !== src[i].idCard)
+}
+
 // ---- 进入时弹窗提醒（老用户被拒后再次申请）----
-onMounted(() => {
+onMounted(async () => {
   if (route.query.toast === 'rejectRemain') {
     const remain = Number(route.query.remain) || 1
     showToast(`存在审批人拒绝情况，申请次数剩余：${remain} 次`)
+  }
+  if (editApplicationId.value) {
+    await loadEditData()
   }
 })
 </script>
 
 <template>
   <div class="page">
-    <h2 class="page-title">访客申请单</h2>
+    <h2 class="page-title">{{ editApplicationId ? '修改来访预约填报' : '来访预约填报' }}</h2>
 
     <div class="page-card">
       <!-- 被访问人：只读，点击弹窗选择 -->
       <van-field :model-value="form.hostName" label="被访问人" placeholder="点击选择被访问人" readonly is-link required
         @click="showHostPopup = true" />
 
-      <!-- 开始时间 -->
-      <van-field :model-value="form.startTime" label="开始时间" placeholder="请选择开始时间" readonly is-link required
-        @click="openTimePicker('start')" />
+      <!-- 开始日期 -->
+      <van-field :model-value="form.startTime" label="开始日期" placeholder="请选择开始日期" readonly is-link required
+        @click="openDatePicker('start')" />
 
-      <!-- 结束时间 -->
-      <van-field :model-value="form.endTime" label="结束时间" placeholder="请选择结束时间" readonly is-link required
-        @click="openTimePicker('end')" />
+      <!-- 结束日期 -->
+      <van-field :model-value="form.endTime" label="结束日期" placeholder="请选择结束日期" readonly is-link required
+        @click="openDatePicker('end')" />
 
       <!-- 访问事由 -->
       <van-field v-model="form.reason" label="访问事由" type="textarea" rows="3" maxlength="200" show-word-limit
@@ -258,7 +315,7 @@ onMounted(() => {
     </div>
 
     <van-button type="primary" block round :disabled="!canSubmit" :loading="submitting" @click="onSubmit">
-      提交申请
+      {{ editApplicationId ? '提交修改' : '提交预约' }}
     </van-button>
 
     <!-- 被访人查询弹窗 -->
@@ -305,21 +362,18 @@ onMounted(() => {
       </div>
     </van-popup>
 
-    <!-- 日期时间选择弹窗（PickerGroup：日期 tab + 时间 tab） -->
-    <van-popup v-model:show="showTimePicker" position="bottom" round>
-      <van-picker-group title="选择时间" :tabs="['选择日期', '选择时间']" next-step-text="下一步"
-        @confirm="onTimeConfirm" @cancel="showTimePicker = false">
-        <van-date-picker v-model="dateValue" :min-date="minDate" :max-date="maxDate" />
-        <van-time-picker v-model="timeValue" />
-      </van-picker-group>
+    <!-- 日期选择弹窗（仅年月日，PRD v1.10：以日期为最小单位） -->
+    <van-popup v-model:show="showDatePicker" position="bottom" round>
+      <van-date-picker v-model="dateValue" :min-date="minDate" :max-date="maxDate" title="选择日期"
+        @confirm="onDateConfirm" @cancel="showDatePicker = false" />
     </van-popup>
 
     <!-- 登记成功弹层（PRD §5.4） -->
     <van-popup v-model:show="showSuccess" round :style="{ width: '80%' }">
       <div class="success-popup">
         <van-icon name="checked" size="56px" color="#07c160" />
-        <h3 class="success-title">登记成功</h3>
-        <p class="success-tip">请耐心等待被访人的确认</p>
+        <h3 class="success-title">{{ editApplicationId ? '预约修改成功' : '预约成功' }}</h3>
+        <p class="success-tip">预约已提交，请等待被访问人审核</p>
         <van-button block round type="primary" @click="onSuccessClose">关闭</van-button>
       </div>
     </van-popup>

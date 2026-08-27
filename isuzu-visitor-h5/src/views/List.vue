@@ -1,9 +1,9 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { useVisitorStore } from '@/stores/visitor'
-import { getApplicationList, getUser } from '@/api/visitor'
+import { deleteApplication, getApplicationList, getUser } from '@/api/visitor'
 import { formatDateTime } from '@/utils/date'
 import { toAvatarUrl } from '@/utils/avatar'
 import { maskIdCard } from '@/utils/mask'
@@ -104,6 +104,30 @@ function onProfileClick() {
   router.push('/user-info?mode=edit')
 }
 
+// 修改待审批申请单（PRD v1.9）：跳转申请单页编辑模式，提交时后端撤销原单并新建
+function onEdit(record) {
+  router.push({ path: '/application', query: { applicationId: record.applicationId } })
+}
+
+// 左滑删除待审批申请单（PRD v1.9）：二次确认后逻辑删除，成功后本地移除并即时刷新
+async function onDelete(record) {
+  try {
+    await showConfirmDialog({
+      title: '删除申请单',
+      message: '确定删除这条待审批的访问申请吗？删除后需重新提交申请。',
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await deleteApplication(store.visitorId, record.applicationId)
+    showToast('删除成功')
+    store.records = store.records.filter((r) => r.applicationId !== record.applicationId)
+  } catch {
+    // 拦截器已提示（如该单已审批无法删除）
+  }
+}
+
 // 非有效记录的副文案（PRD v1.5：列表展示全部记录，门卫仅认「通过且有效期内」）
 function effectiveTip(record) {
   const now = new Date()
@@ -116,61 +140,100 @@ function effectiveTip(record) {
 </script>
 
 <template>
-  <div class="page">
-    <!-- 顶部用户信息区：门卫核验身份依据，醒目展示防冒用（PRD §5.5） -->
-    <div class="profile-card" @click="onProfileClick">
-      <van-image round width="64" height="64" :src="toAvatarUrl(store.userInfo?.avatar)" fit="cover">
-        <template #error><van-icon name="user-o" size="40" /></template>
-      </van-image>
-      <div class="profile-info">
-        <div class="profile-name">{{ store.userInfo?.name || '—' }}</div>
-        <div class="profile-company">{{ store.userInfo?.company || '' }}</div>
-        <!-- 身份证号（脱敏，门卫对照实体证件核验；后端已脱敏，maskIdCard 幂等） -->
-        <div class="profile-idcard">身份证：{{ store.userInfo?.idCard ? maskIdCard(store.userInfo.idCard) : '—' }}</div>
-      </div>
-      <van-icon name="arrow" color="#999" />
-    </div>
-
-    <!-- 当前时间戳（防截图冒用，PRD v1.3 §5.5） -->
-    <div class="timestamp">当前时间：{{ nowTime }}</div>
-
+  <div class="page list-page">
     <h2 class="page-title">访问预约记录</h2>
+
+    <!-- 当前时间戳（防截图冒用，PRD v1.3 §5.5；置于标题下方，保证标题行距顶与其余页面一致） -->
+    <div class="timestamp">当前时间：{{ nowTime }}</div>
 
     <!-- 有效审批记录列表 -->
     <van-loading v-if="loading" size="24px" class="list-loading" />
     <template v-else>
       <van-empty v-if="!store.records.length" image="search" description=" " />
       <div v-else class="record-list">
-        <div v-for="record in store.records" :key="record.applicationId" class="record-card"
-          :class="{ 'record-inactive': record.effective === false }">
-          <div class="record-main">
-            <div class="record-host">被访人：{{ record.hostName }}</div>
-            <div class="record-time">访问截止：{{ formatDateTime(new Date(record.endTime.replace(' ', 'T'))) }}
-              <span v-if="record.effective === false" class="record-tip">{{ effectiveTip(record) }}</span>
+        <van-swipe-cell v-for="record in store.records" :key="record.applicationId">
+          <div class="record-card" :class="{ 'record-inactive': record.effective === false }">
+            <div class="record-main">
+              <div class="record-host">被访人：{{ record.hostName }}</div>
+              <div class="record-time">访问截止：{{ (record.endTime || '').slice(0, 10) }}
+                <span v-if="record.effective === false" class="record-tip">{{ effectiveTip(record) }}</span>
+              </div>
+              <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；固定显示标题与名单/空态） -->
+              <div class="record-companions">
+                <CompanionList :companions="record.companions || []" />
+              </div>
             </div>
-            <!-- 随行人员名单（门卫核验用，PRD v1.4 §5.5；老数据无名单时跳过） -->
-            <div v-if="record.companions?.length" class="record-companions">
-              <CompanionList :companions="record.companions" />
-            </div>
+            <van-tag :type="statusInfo(record)?.type" round>
+              {{ statusInfo(record)?.text }}
+            </van-tag>
           </div>
-          <van-tag :type="statusInfo(record)?.type" round>
-            {{ statusInfo(record)?.text }}
-          </van-tag>
-        </div>
+          <!-- 仅待审批记录可左滑修改/删除（PRD v1.9） -->
+          <template #right v-if="record.status === '0'">
+            <van-button square type="primary" class="record-edit" @click="onEdit(record)">
+              修改
+            </van-button>
+            <van-button square type="danger" class="record-delete" @click="onDelete(record)">
+              删除
+            </van-button>
+          </template>
+        </van-swipe-cell>
       </div>
     </template>
+
+    <!-- 访客信息（固定屏幕底部吸底栏，我的信息修改入口，PRD §5.5） -->
+    <div class="profile-fixed">
+      <div class="profile-section-title">访客信息</div>
+      <div class="profile-card" @click="onProfileClick">
+        <van-image round width="64" height="64" :src="toAvatarUrl(store.userInfo?.avatar)" fit="cover">
+          <template #error><van-icon name="user-o" size="40" /></template>
+        </van-image>
+        <div class="profile-info">
+          <div class="profile-name">{{ store.userInfo?.name || '—' }}</div>
+          <div class="profile-company">{{ store.userInfo?.company || '' }}</div>
+          <!-- 身份证号（脱敏，门卫对照实体证件核验；后端已脱敏，maskIdCard 幂等） -->
+          <div class="profile-idcard">身份证：{{ store.userInfo?.idCard ? maskIdCard(store.userInfo.idCard) : '—' }}</div>
+          <!-- 车牌号（非必填，门卫核验车辆；无则隐藏） -->
+          <div v-if="store.userInfo?.plateNo" class="profile-idcard">车牌号：{{ store.userInfo.plateNo }}</div>
+        </div>
+        <van-icon name="arrow" color="#999" />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 页面底部留白，避免吸底栏遮挡最后一条记录 */
+.list-page {
+  padding-bottom: 160px;
+}
+
+/* 访客信息吸底栏（固定屏幕底部，我的信息修改入口） */
+.profile-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: var(--page-bg);
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+/* 访客信息卡片（蓝色细边框，区别于普通记录卡片） */
 .profile-card {
   display: flex;
   align-items: center;
   gap: 12px;
   background: var(--card-bg);
+  border: 1px solid #4a90e2;
   border-radius: var(--radius-lg);
-  padding: 16px;
-  margin-bottom: 8px;
+  padding: 14px 16px;
 }
 
 .profile-info {
@@ -200,7 +263,7 @@ function effectiveTip(record) {
   text-align: center;
   font-size: 12px;
   color: var(--color-text-secondary);
-  margin-bottom: 8px;
+  margin: 0 0 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -243,6 +306,16 @@ function effectiveTip(record) {
 
 .record-inactive {
   opacity: 0.55;
+}
+
+.record-edit {
+  height: 100%;
+  width: 72px;
+}
+
+.record-delete {
+  height: 100%;
+  width: 72px;
 }
 
 .record-companions {

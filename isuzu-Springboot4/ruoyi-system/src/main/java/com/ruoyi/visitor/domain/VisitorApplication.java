@@ -56,6 +56,9 @@ public class VisitorApplication
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date updateTime;
 
+    /** 删除标志(0存在 1已撤销/删除，逻辑删除) */
+    private String delFlag;
+
     /** 随行人员名单（提交入参 + 列表/详情返回，见 docs/03_接口契约.md §3.6） */
     private List<VisitorCompanion> companions;
 
@@ -64,6 +67,9 @@ public class VisitorApplication
 
     /** 一次性提交令牌（防重复提交，提交时由前端携带，非表字段） */
     private String submitToken;
+
+    /** 待撤销的原申请单号（修改链路 v1.9：提交时携带则先逻辑删除原单再新建，非表字段） */
+    private String replaceApplicationId;
 
     public String getApplicationId()
     {
@@ -181,6 +187,16 @@ public class VisitorApplication
         this.updateTime = updateTime;
     }
 
+    public String getDelFlag()
+    {
+        return delFlag;
+    }
+
+    public void setDelFlag(String delFlag)
+    {
+        this.delFlag = delFlag;
+    }
+
     public List<VisitorCompanion> getCompanions()
     {
         return companions;
@@ -209,6 +225,16 @@ public class VisitorApplication
     public void setSubmitToken(String submitToken)
     {
         this.submitToken = submitToken;
+    }
+
+    public String getReplaceApplicationId()
+    {
+        return replaceApplicationId;
+    }
+
+    public void setReplaceApplicationId(String replaceApplicationId)
+    {
+        this.replaceApplicationId = replaceApplicationId;
     }
 
     @Override

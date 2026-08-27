@@ -55,11 +55,11 @@ spring:
     restart:
       # 热部署开关
       enabled: true
-  # 邮件配置（访客审批邮件，占位：SMTP 信息确定后取消注释；未配置时系统正常启动，邮件发送跳过并记录日志）
+  # 邮件配置（访客审批邮件：SMTP 已配置即发送；未配置 host 时系统正常启动、发送跳过并记录日志）
   mail:
     host: smtp.qiye.163.com
     port: 465
-    username: ggyxfw@jx-isuzuengine.com 
+    username: ggyxfw@jx-isuzuengine.com
     password: Isuzu0791
     # 显式 UTF-8（Spring Boot 4 默认即为 UTF-8，此处防配置漂移）
     default-encoding: UTF-8
@@ -70,6 +70,10 @@ spring:
           auth: true
           ssl:
             enable: true
+          # SMTP 超时（毫秒）：连接/读/写各 5s，网络异常时快速失败，邮件发送已异步化不阻塞提交接口
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   data:
     # redis 配置
     redis:

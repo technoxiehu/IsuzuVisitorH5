@@ -64,8 +64,8 @@ public class VisitorMailService
         text.append("您好，").append(application.getHostName()).append("：\n\n");
         text.append("您有一条访客访问申请待审批：\n");
         text.append("申请人：").append(visitorName).append("（").append(visitorCompany).append("）\n");
-        text.append("访问时间：").append(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, application.getStartTime()))
-                .append(" 至 ").append(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, application.getEndTime())).append("\n");
+        text.append("访问时间：").append(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD, application.getStartTime()))
+                .append(" 至 ").append(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD, application.getEndTime())).append("\n");
         text.append("访问事由：").append(application.getReason()).append("\n");
         // 随行人员仅报人数，不列名单与证件号（docs/03_接口契约.md §5.2，名单在审批页查看）
         List<VisitorCompanion> companions = application.getCompanions();

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.visitor.mapper.VisitorEntryMapper">
+
+    <resultMap type="VisitorEntry" id="VisitorEntryResult">
+        <id     property="entryId"       column="entry_id"       />
+        <result property="applicationId" column="application_id" />
+        <result property="operatorId"    column="operator_id"    />
+        <result property="operatorName"  column="operator_name"  />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <resultMap type="GuardCardVo" id="GuardCardResult">
+        <result property="applicationId"   column="application_id"   />
+        <result property="visitorId"       column="visitor_id"       />
+        <result property="visitorName"     column="visitor_name"     />
+        <result property="visitorPhone"    column="visitor_phone"    />
+        <result property="visitorIdCard"   column="visitor_id_card"  />
+        <result property="visitorCompany"  column="visitor_company"  />
+        <result property="visitorAvatar"   column="visitor_avatar"   />
+        <result property="plateNo"         column="plate_no"         />
+        <result property="hostName"        column="host_name"        />
+        <result property="reason"          column="reason"           />
+        <result property="startTime"       column="start_time"       />
+        <result property="endTime"         column="end_time"         />
+        <result property="status"          column="status"           />
+        <result property="approveTime"     column="approve_time"     />
+        <result property="entryCount"      column="entry_count"      />
+        <result property="lastEntryTime"   column="last_entry_time"  />
+    </resultMap>
+
+    <resultMap type="GuardEntryVo" id="GuardEntryResult">
+        <result property="entryId"        column="entry_id"        />
+        <result property="applicationId"  column="application_id"  />
+        <result property="visitorName"    column="visitor_name"    />
+        <result property="visitorCompany" column="visitor_company" />
+        <result property="visitorPhone"   column="visitor_phone"   />
+        <result property="visitorIdCard"  column="visitor_id_card" />
+        <result property="plateNo"        column="plate_no"        />
+        <result property="hostName"       column="host_name"       />
+        <result property="startTime"      column="start_time"      />
+        <result property="endTime"        column="end_time"        />
+        <result property="operatorName"   column="operator_name"   />
+        <result property="entryTime"      column="entry_time"      />
+    </resultMap>
+
+    <!-- 门卫有效单据卡片（§3.13）：审批通过(1)、未撤销(0)且访问窗口覆盖当天
+         （start_time < 次日零点 且 end_time >= 当日零点，日期粒度开区间判覆盖）；
+         entry_count/last_entry_time 为该申请单当日放行统计（子查询，当日区间同卡片窗口） -->
+    <select id="selectGuardCardList" resultMap="GuardCardResult">
+        select va.application_id, va.visitor_id, va.host_name, va.reason, va.start_time, va.end_time, va.status, va.approve_time,
+               v.name as visitor_name, v.phone as visitor_phone, v.id_card as visitor_id_card,
+               v.company as visitor_company, v.avatar as visitor_avatar, v.plate_no,
+               (select count(1) from visitor_entry e1
+                 where e1.application_id = va.application_id
+                   and e1.create_time &gt;= #{dateStart} and e1.create_time &lt; #{nextDayStart}) as entry_count,
+               (select max(e2.create_time) from visitor_entry e2
+                 where e2.application_id = va.application_id
+                   and e2.create_time &gt;= #{dateStart} and e2.create_time &lt; #{nextDayStart}) as last_entry_time
+        from visitor_application va
+        left join visitor v on va.visitor_id = v.visitor_id
+        where va.status = '1' and va.del_flag = '0'
+          and va.start_time &lt; #{nextDayStart}
+          and va.end_time &gt;= #{dateStart}
+        <if test="keyword != null and keyword != ''">
+            and (
+                v.name like concat('%', #{keyword}, '%')
+                or v.phone like concat('%', #{keyword}, '%')
+                or v.id_card like concat('%', #{keyword}, '%')
+                or v.plate_no like concat('%', #{keyword}, '%')
+            )
+        </if>
+        order by va.create_time desc
+    </select>
+
+    <insert id="insertEntry" parameterType="VisitorEntry">
+        insert into visitor_entry(entry_id, application_id, operator_id, operator_name, create_time)
+        values (#{entryId}, #{applicationId}, #{operatorId}, #{operatorName}, #{createTime})
+    </insert>
+
+    <!-- 入场记录查询（§3.15）：JOIN 申请单/访客表取展示字段；
+         申请单已撤销/删除的记录仍展示（历史事实，审计留存），故不过滤 va.del_flag -->
+    <select id="selectEntryList" resultMap="GuardEntryResult">
+        select ve.entry_id, ve.application_id, ve.operator_name, ve.create_time as entry_time,
+               v.name as visitor_name, v.company as visitor_company, v.phone as visitor_phone,
+               v.id_card as visitor_id_card, v.plate_no,
+               va.host_name, va.start_time, va.end_time
+        from visitor_entry ve
+        left join visitor_application va on ve.application_id = va.application_id
+        left join visitor v on va.visitor_id = v.visitor_id
+        where 1 = 1
+        <if test="keyword != null and keyword != ''">
+            and (
+                v.name like concat('%', #{keyword}, '%')
+                or v.phone like concat('%', #{keyword}, '%')
+                or ve.operator_name like concat('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="beginTime != null">
+            and ve.create_time &gt;= #{beginTime}
+        </if>
+        <if test="endTime != null">
+            and ve.create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
+        order by ve.create_time desc
+    </select>
+
+</mapper>

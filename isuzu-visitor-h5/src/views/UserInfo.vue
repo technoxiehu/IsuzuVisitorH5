@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import { useVisitorStore } from '@/stores/visitor'
 import { registerUser, updateUser, uploadAvatar } from '@/api/visitor'
 import { toAvatarUrl } from '@/utils/avatar'
@@ -14,8 +15,10 @@ const router = useRouter()
 const store = useVisitorStore()
 
 const isEdit = ref(false)
-const form = reactive({ name: '', phone: '', idCard: '', company: '', avatar: '' })
-const errors = reactive({ name: '', phone: '', idCard: '', company: '', avatar: '' })
+const form = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
+const errors = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
+// 编辑模式原始值快照（保存前未修改检测的基准，Application.vue 同款逻辑）
+const original = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
 const fileList = ref([])
 const submitting = ref(false)
 
@@ -23,6 +26,10 @@ const submitting = ref(false)
 const ID_CARD_RE = /^\d{17}[\dX]$/
 // 输入过滤：仅数字与 X（自动转大写），截断 18 位
 const idCardFormatter = (v) => v.replace(/[^\dXx]/g, '').slice(0, 18).toUpperCase()
+// 车牌号非必填：留空通过；填写仅限汉字/字母/数字，≤10 位（宽松校验，兼容新能源等）
+const PLATE_RE = /^[一-龥A-Za-z0-9]{0,10}$/
+// 输入过滤：仅汉字/字母/数字（自动转大写），截断 10 位
+const plateFormatter = (v) => v.replace(/[^一-龥A-Za-z0-9]/g, '').slice(0, 10).toUpperCase()
 
 onMounted(async () => {
   // 等待路由解析完成后再读取 query 与回显
@@ -33,10 +40,18 @@ onMounted(async () => {
     form.phone = store.userInfo.phone || ''
     form.idCard = store.userInfo.idCard || '' // 后端返回全量值，本人设备回显
     form.company = store.userInfo.company || ''
+    form.plateNo = store.userInfo.plateNo || '' // 非必填，老用户无则留空
     form.avatar = store.userInfo.avatar || ''
     if (form.avatar) {
       fileList.value = [{ url: toAvatarUrl(form.avatar) }]
     }
+    // 快照原始值（保存前未修改检测的基准）
+    original.name = form.name
+    original.phone = form.phone
+    original.idCard = form.idCard
+    original.company = form.company
+    original.plateNo = form.plateNo
+    original.avatar = form.avatar
   }
 })
 
@@ -65,12 +80,39 @@ function validate() {
   // 全量回显，须为合法 18 位身份证号
   errors.idCard = ID_CARD_RE.test(form.idCard) ? '' : '请输入正确的18位身份证号'
   errors.company = form.company.trim() ? '' : '请输入单位'
+  // 车牌号非必填：留空通过；填写时按宽松规则校验（前端已过滤非法字符，此处兜底）
+  errors.plateNo = form.plateNo.trim() && !PLATE_RE.test(form.plateNo) ? '车牌号格式不正确' : ''
   errors.avatar = form.avatar ? '' : '请上传头像照片'
-  return !errors.name && !errors.phone && !errors.idCard && !errors.company && !errors.avatar
+  return (
+    !errors.name &&
+    !errors.phone &&
+    !errors.idCard &&
+    !errors.company &&
+    !errors.plateNo &&
+    !errors.avatar
+  )
+}
+
+// 保存前检查：是否真实修改了内容（按提交口径 trim 归一化比较，Application.vue 同款逻辑）
+function isModified() {
+  return (
+    form.name.trim() !== original.name.trim() ||
+    form.phone !== original.phone ||
+    form.idCard !== original.idCard ||
+    form.company.trim() !== original.company.trim() ||
+    form.plateNo.trim() !== original.plateNo.trim() ||
+    form.avatar !== original.avatar
+  )
 }
 
 async function onSubmit() {
   if (!validate()) return
+  // 编辑模式：未实际修改任何内容时不走后台修改流程，提示后直接返回列表
+  if (isEdit.value && !isModified()) {
+    showToast('报告，保持原装！😎')
+    router.replace('/list')
+    return
+  }
   submitting.value = true
   const data = {
     visitorId: store.visitorId,
@@ -78,6 +120,7 @@ async function onSubmit() {
     phone: form.phone,
     idCard: form.idCard, // 脱敏值也原样提交，由后端守卫决定是否覆盖
     company: form.company.trim(),
+    plateNo: form.plateNo.trim(), // 非必填，空字符串后端按空处理
     avatar: form.avatar,
   }
   try {
@@ -157,10 +200,20 @@ async function onSubmit() {
         :error-message="errors.company"
         required
       />
+
+      <!-- 车牌号（非必填，注册与我的信息页均可填/改） -->
+      <van-field
+        v-model="form.plateNo"
+        label="车牌号"
+        placeholder="请输入车牌号（选填）"
+        maxlength="10"
+        :formatter="plateFormatter"
+        :error-message="errors.plateNo"
+      />
     </div>
 
     <van-button type="primary" block round :loading="submitting" @click="onSubmit">
-      {{ isEdit ? '保存修改' : '提交' }}
+      {{ isEdit ? '保存修改' : '预约' }}
     </van-button>
   </div>
 </template>

@@ -46,6 +46,15 @@ public interface IVisitorApplicationService
     public Map<String, Object> selectValidList(String visitorId);
 
     /**
+     * 申请单详情（本人回显修改用；仅未审批且未撤销的申请单可查，已审批返回 code=601，不存在/已撤销/非本人返回 code=400）
+     *
+     * @param visitorId 访客ID（归属校验）
+     * @param applicationId 申请单号
+     * @return 申请单（随行人员身份证号完整返回，不脱敏，仅本人可见）
+     */
+    public VisitorApplication getApplicationDetail(String visitorId, String applicationId);
+
+    /**
      * 审批详情（token 鉴权；已审批时抛出业务异常 code=601，token 无效时抛出 code=401）
      *
      * @param token 审批 token
@@ -60,4 +69,12 @@ public interface IVisitorApplicationService
      * @param action 审批动作（approve 批准 / reject 拒绝）
      */
     public void approve(String token, String action);
+
+    /**
+     * 删除待审批申请单（逻辑删除 del_flag='1'，仅本人可删；已审批/已撤销/不存在时报错）
+     *
+     * @param visitorId 访客ID（归属校验）
+     * @param applicationId 申请单号
+     */
+    public void deleteApplication(String visitorId, String applicationId);
 }

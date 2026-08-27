@@ -10,13 +10,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="phone"       column="phone"        />
         <result property="idCard"      column="id_card"      />
         <result property="company"     column="company"      />
+        <result property="plateNo"     column="plate_no"     />
         <result property="avatar"      column="avatar"       />
         <result property="createTime"  column="create_time"  />
         <result property="updateTime"  column="update_time"  />
     </resultMap>
 
     <sql id="selectVisitorVo">
-        select visitor_id, name, phone, id_card, company, avatar, create_time, update_time from visitor
+        select visitor_id, name, phone, id_card, company, plate_no, avatar, create_time, update_time from visitor
     </sql>
 
     <select id="selectVisitorById" parameterType="String" resultMap="VisitorResult">
@@ -26,9 +27,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <insert id="insertVisitor" parameterType="Visitor">
         insert into visitor(
-            visitor_id, name, phone, id_card, company, avatar, create_time
+            visitor_id, name, phone, id_card, company, plate_no, avatar, create_time
         ) values (
-            #{visitorId}, #{name}, #{phone}, #{idCard}, #{company}, #{avatar}, sysdate()
+            #{visitorId}, #{name}, #{phone}, #{idCard}, #{company}, #{plateNo}, #{avatar}, sysdate()
         )
     </insert>
 
@@ -39,6 +40,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="phone != null and phone != ''">phone = #{phone},</if>
             <if test="idCard != null and idCard != ''">id_card = #{idCard},</if>
             <if test="company != null and company != ''">company = #{company},</if>
+            <!-- 车牌号非必填，允许空字符串清空原值 -->
+            <if test="plateNo != null">plate_no = #{plateNo},</if>
             <if test="avatar != null and avatar != ''">avatar = #{avatar},</if>
             update_time = sysdate()
         </set>

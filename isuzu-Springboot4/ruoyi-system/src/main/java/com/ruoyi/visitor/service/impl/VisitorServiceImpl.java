@@ -8,6 +8,7 @@ import com.ruoyi.visitor.domain.Visitor;
 import com.ruoyi.visitor.mapper.VisitorMapper;
 import com.ruoyi.visitor.service.IVisitorService;
 import com.ruoyi.visitor.utils.IdCardUtils;
+import java.util.regex.Pattern;
 
 /**
  * 访客信息 业务层处理
@@ -17,8 +18,20 @@ import com.ruoyi.visitor.utils.IdCardUtils;
 @Service
 public class VisitorServiceImpl implements IVisitorService
 {
+    /** 车牌号宽松校验：非必填，填写仅限汉字/字母/数字且 ≤10 位（兼容新能源等特殊车牌） */
+    private static final Pattern PLATE_NO_PATTERN = Pattern.compile("^[\\u4e00-\\u9fa5A-Za-z0-9]{0,10}$");
+
     @Autowired
     private VisitorMapper visitorMapper;
+
+    /** 车牌号校验（非必填）：空/空白/合法值通过，非法字符抛 400 */
+    private void validatePlateNo(String plateNo)
+    {
+        if (plateNo != null && !plateNo.isBlank() && !PLATE_NO_PATTERN.matcher(plateNo).matches())
+        {
+            throw new ServiceException("车牌号仅支持汉字、字母、数字且不超过10个字符", 400);
+        }
+    }
 
     /**
      * 根据访客ID查询访客信息
@@ -53,6 +66,7 @@ public class VisitorServiceImpl implements IVisitorService
             throw new ServiceException("身份证号不能为空或格式不正确", 400);
         }
         visitor.setIdCard(idCard.toUpperCase());
+        validatePlateNo(visitor.getPlateNo());
         visitorMapper.insertVisitor(visitor);
     }
 
@@ -79,6 +93,7 @@ public class VisitorServiceImpl implements IVisitorService
         {
             visitor.setIdCard(idCard.toUpperCase());
         }
+        validatePlateNo(visitor.getPlateNo());
         visitorMapper.updateVisitor(visitor);
     }
 }

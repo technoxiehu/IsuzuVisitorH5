@@ -17,6 +17,9 @@ const splashLeaving = ref(false)
 // 用 v-show 常驻 DOM（而非 v-if），并在 Splash 离场淡出期间提前显示（z-index 暂时置于其下），
 // 使淡出露出的正是进场须知而非底层路由页
 const noticeConfirmed = ref(false)
+// 进场须知对用户可见（Splash 开始离场、须知层开始露出）：
+// NoticeGate 的阅读倒计时自此才启动，而非组件挂载时（挂载早于开屏动画）
+const noticeVisible = computed(() => !isApprove.value && splashLeaving.value)
 </script>
 
 <template>
@@ -28,6 +31,7 @@ const noticeConfirmed = ref(false)
   <NoticeGate
     v-show="!isApprove && splashLeaving && (!noticeConfirmed || !splashDone)"
     :class="{ 'notice--under-splash': !isApprove && splashLeaving && !splashDone }"
+    :visible="noticeVisible"
     @confirm="noticeConfirmed = true"
   />
   <router-view />

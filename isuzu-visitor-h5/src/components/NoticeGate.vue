@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 defineOptions({ name: 'NoticeGate' })
 
@@ -8,6 +8,47 @@ defineOptions({ name: 'NoticeGate' })
 const emit = defineEmits(['confirm'])
 
 const agreed = ref(false)
+
+// 本组件用 v-show 常驻 DOM（挂载早于开屏动画结束），
+// 由 App 传入 visible 标记"真正对用户可见"（Splash 离场、须知层开始露出）
+const props = defineProps({
+  visible: { type: Boolean, default: false },
+})
+
+// 阅读 6 秒倒计时：首次可见时才启动，计时结束前 checkbox 禁用，防止未读即勾选
+const READ_SECONDS = 6
+const countdown = ref(READ_SECONDS)
+let countdownTimer = null
+let timerStarted = false
+
+function startCountdown() {
+  if (timerStarted) return
+  timerStarted = true
+  countdownTimer = setInterval(() => {
+    countdown.value -= 1
+    if (countdown.value <= 0) {
+      countdown.value = 0
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+}
+
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) startCountdown()
+  },
+  // 处理初始渲染时即已可见（如刷新后跳过 Splash 的场景）
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
 
 const items = [
   { icon: '/notice/reception.png', text: '来访人员请在门岗登记，联系被访人员前来接待并全程陪同' },
@@ -29,6 +70,7 @@ function confirm() {
 <template>
   <div class="notice">
     <div class="notice-header">
+      <span v-if="countdown > 0" class="notice-countdown">{{ countdown }}s</span>
       <h1 class="notice-title">进场须知</h1>
     </div>
 
@@ -42,8 +84,8 @@ function confirm() {
     </div>
 
     <div class="notice-footer">
-      <van-checkbox v-model="agreed" icon-size="18px" class="notice-check">
-        <span class="notice-check-label">我已阅读并同意《进场须知》</span>
+      <van-checkbox v-model="agreed" icon-size="18px" class="notice-check" :disabled="countdown > 0">
+        <span class="notice-check-label" :class="{ 'is-disabled': countdown > 0 }">我已阅读并同意《进场须知》</span>
       </van-checkbox>
       <van-button type="primary" block round :disabled="!agreed" class="notice-btn" @click="confirm">
         进入预约
@@ -68,8 +110,25 @@ function confirm() {
 }
 
 .notice-header {
+  position: relative;
   padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
   padding-bottom: 12px;
+  text-align: center;
+}
+
+/* 右上角阅读倒计时角标 */
+.notice-countdown {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 22px);
+  right: 16px;
+  min-width: 36px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
   text-align: center;
 }
 
@@ -131,5 +190,10 @@ function confirm() {
 .notice-check-label {
   font-size: 13px;
   color: var(--color-text);
+}
+
+/* 倒计时未结束时的置灰提示 */
+.notice-check-label.is-disabled {
+  color: var(--color-text-secondary);
 }
 </style>

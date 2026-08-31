@@ -1,0 +1,5 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]: 正在进入...
+  - generic [ref=f2e28]:
+    - generic "Toggle devtools panel" [ref=f2e29] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f2e35] [cursor=pointer]

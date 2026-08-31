@@ -1,0 +1,22 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - generic [ref=f2e40]:
+      - heading "进厂须知" [level=1] [ref=f2e42]
+      - generic [ref=f2e44]:
+        - paragraph [ref=f2e46]: 来访人员请在门岗登记，联系被访人员前来接待并全程陪同
+        - paragraph [ref=f2e48]: 来访人员如需进入车间，为保障安全，需佩戴安全帽、临时出入证
+        - paragraph [ref=f2e50]: 车辆按要求停放在指定区域，严禁停放在新能源充电桩处或试验车专属停车区和非停车区域
+        - paragraph [ref=f2e52]: 请在指定区域吸烟，严禁流动吸烟
+        - paragraph [ref=f2e54]: 禁止擅自拍照录像
+        - paragraph [ref=f2e56]: 驾车离场，需摇下前后车窗并打开后备箱配合检查
+        - paragraph [ref=f2e58]: 您已进入视频监控拍摄区域
+        - paragraph [ref=f2e60]: 请自觉遵守公司安全环保管理规定
+      - generic [ref=f2e61]:
+        - checkbox " 我已阅读并同意《进厂须知》" [checked] [active] [ref=f2e62] [cursor=pointer]:
+          - generic [ref=f2e63]: 
+          - generic [ref=f2e65]: 我已阅读并同意《进厂须知》
+        - button "进入预约" [ref=f2e66] [cursor=pointer]
+    - generic [ref=f2e22]: 正在进入...
+  - generic [ref=f2e28]:
+    - generic "Toggle devtools panel" [ref=f2e29] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f2e35] [cursor=pointer]

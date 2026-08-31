@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - img "五十铃厂区" [ref=e5]
+        - heading "五 十 铃 发 动 机 访 客 预 约" [level=1] [ref=e7]:
+          - generic [ref=e8]: 五
+          - generic [ref=e9]: 十
+          - generic [ref=e10]: 铃
+          - generic [ref=e11]: 发
+          - generic [ref=e12]: 动
+          - generic [ref=e13]: 机
+          - generic [ref=e14]: 访
+          - generic [ref=e15]: 客
+          - generic [ref=e16]: 预
+          - generic [ref=e17]: 约
+        - paragraph [ref=e18]: 欢迎光临
+      - button "跳过" [ref=e19]
+    - generic [ref=e22]: 正在进入...
+  - generic [ref=e28]:
+    - generic "Toggle devtools panel" [ref=e29] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=e35] [cursor=pointer]

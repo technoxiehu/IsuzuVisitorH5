@@ -1,0 +1,171 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e21]:
+    - heading "访客申请单" [level=2] [ref=f1e22]
+    - generic [ref=f1e23]:
+      - button "*被访问人 李凡 " [ref=f1e90] [cursor=pointer]:
+        - generic [ref=f1e25]: "*被访问人"
+        - textbox "被访问人" [ref=f1e28]:
+          - /placeholder: 点击选择被访问人
+          - text: 李凡
+        - generic [ref=f1e29]: 
+      - button "*开始时间 " [ref=f1e30] [cursor=pointer]:
+        - generic [ref=f1e31]: "*开始时间"
+        - textbox "开始时间" [ref=f1e34]:
+          - /placeholder: 请选择开始时间
+        - generic [ref=f1e35]: 
+      - button "*结束时间 " [ref=f1e36] [cursor=pointer]:
+        - generic [ref=f1e37]: "*结束时间"
+        - textbox "结束时间" [ref=f1e40]:
+          - /placeholder: 请选择结束时间
+        - generic [ref=f1e41]: 
+      - generic [ref=f1e42]:
+        - generic [ref=f1e43]: "*访问事由"
+        - generic [ref=f1e44]:
+          - textbox "访问事由" [ref=f1e46]:
+            - /placeholder: 请填写访问事由（200字以内）
+          - generic [ref=f1e47]: 0/200
+    - generic [ref=f1e48]:
+      - generic [ref=f1e49]: 随行人员（可选，最多 5 人）0/5
+      - button " 添加随行人员" [ref=f1e50] [cursor=pointer]:
+        - generic [ref=f1e51]:
+          - generic [ref=f1e52]: 
+          - generic [ref=f1e53]: 添加随行人员
+    - button "提交申请" [disabled] [ref=f1e54]
+    - text:  
+    - button [ref=f1e91]
+    - dialog [ref=f1e92]:
+      - generic [ref=f1e93]:
+        - generic [ref=f1e94]:
+          - button "取消" [ref=f1e95] [cursor=pointer]
+          - generic [ref=f1e96]: 选择时间
+          - button "确认" [ref=f1e324] [cursor=pointer]
+        - generic [ref=f1e98]:
+          - tablist [ref=f1e100]:
+            - tab "选择日期" [ref=f1e101] [cursor=pointer]
+            - tab "选择时间" [selected] [ref=f1e103] [cursor=pointer]
+          - generic [ref=f1e108]:
+            - generic [ref=f1e112]:
+              - list [ref=f1e114]:
+                - button [ref=f1e325]:
+                  - generic [ref=f1e116]: "2026"
+                - button [ref=f1e326]:
+                  - generic [ref=f1e118]: "2027"
+              - list [ref=f1e120]:
+                - button [ref=f1e327]:
+                  - generic [ref=f1e122]: "08"
+                - button [ref=f1e328]:
+                  - generic [ref=f1e124]: "09"
+                - button [ref=f1e329]:
+                  - generic [ref=f1e126]: "10"
+                - button [ref=f1e330]:
+                  - generic [ref=f1e128]: "11"
+                - button [ref=f1e331]:
+                  - generic [ref=f1e130]: "12"
+              - list [ref=f1e132]:
+                - button [ref=f1e332]:
+                  - generic [ref=f1e134]: "24"
+                - button [ref=f1e333]:
+                  - generic [ref=f1e136]: "25"
+                - button [ref=f1e334]:
+                  - generic [ref=f1e138]: "26"
+                - button [ref=f1e335]:
+                  - generic [ref=f1e140]: "27"
+                - button [ref=f1e336]:
+                  - generic [ref=f1e142]: "28"
+                - button [ref=f1e337]:
+                  - generic [ref=f1e144]: "29"
+                - button [ref=f1e338]:
+                  - generic [ref=f1e146]: "30"
+                - button [ref=f1e339]:
+                  - generic [ref=f1e148]: "31"
+            - tabpanel "选择时间" [ref=f1e340]:
+              - generic [ref=f1e151]:
+                - list [ref=f1e153]:
+                  - button "00" [ref=f1e341]
+                  - button "01" [ref=f1e342]
+                  - button "02" [ref=f1e343]
+                  - button "03" [ref=f1e344]
+                  - button "04" [ref=f1e345]
+                  - button "05" [ref=f1e346]
+                  - button "06" [ref=f1e347]
+                  - button "07" [ref=f1e348]
+                  - button "08" [ref=f1e349]
+                  - button "09" [ref=f1e350]
+                  - button "10" [ref=f1e351]
+                  - button "11" [ref=f1e352]
+                  - button "12" [ref=f1e353]
+                  - button "13" [ref=f1e354]
+                  - button "14" [ref=f1e355]
+                  - button "15" [ref=f1e356]
+                  - button "16" [ref=f1e357]
+                  - button "17" [ref=f1e358]
+                  - button "18" [ref=f1e359]
+                  - button "19" [ref=f1e360]
+                  - button "20" [active] [ref=f1e361]
+                  - button "21" [ref=f1e362]
+                  - button "22" [ref=f1e363]
+                  - button "23" [ref=f1e364]
+                - list [ref=f1e203]:
+                  - button "00" [ref=f1e365]
+                  - button "01" [ref=f1e366]
+                  - button "02" [ref=f1e367]
+                  - button "03" [ref=f1e368]
+                  - button "04" [ref=f1e369]
+                  - button "05" [ref=f1e370]
+                  - button "06" [ref=f1e371]
+                  - button "07" [ref=f1e372]
+                  - button "08" [ref=f1e373]
+                  - button "09" [ref=f1e374]
+                  - button "10" [ref=f1e375]
+                  - button "11" [ref=f1e376]
+                  - button "12" [ref=f1e377]
+                  - button "13" [ref=f1e378]
+                  - button "14" [ref=f1e379]
+                  - button "15" [ref=f1e380]
+                  - button "16" [ref=f1e381]
+                  - button "17" [ref=f1e382]
+                  - button "18" [ref=f1e383]
+                  - button "19" [ref=f1e384]
+                  - button "20" [ref=f1e385]
+                  - button "21" [ref=f1e386]
+                  - button "22" [ref=f1e387]
+                  - button "23" [ref=f1e388]
+                  - button "24" [ref=f1e389]
+                  - button "25" [ref=f1e390]
+                  - button "26" [ref=f1e391]
+                  - button "27" [ref=f1e392]
+                  - button "28" [ref=f1e393]
+                  - button "29" [ref=f1e394]
+                  - button "30" [ref=f1e395]
+                  - button "31" [ref=f1e396]
+                  - button "32" [ref=f1e397]
+                  - button "33" [ref=f1e398]
+                  - button "34" [ref=f1e399]
+                  - button "35" [ref=f1e400]
+                  - button "36" [ref=f1e401]
+                  - button "37" [ref=f1e402]
+                  - button "38" [ref=f1e403]
+                  - button "39" [ref=f1e404]
+                  - button "40" [ref=f1e405]
+                  - button "41" [ref=f1e406]
+                  - button "42" [ref=f1e407]
+                  - button "43" [ref=f1e408]
+                  - button "44" [ref=f1e409]
+                  - button "45" [ref=f1e410]
+                  - button "46" [ref=f1e411]
+                  - button "47" [ref=f1e412]
+                  - button "48" [ref=f1e413]
+                  - button "49" [ref=f1e414]
+                  - button "50" [ref=f1e415]
+                  - button "51" [ref=f1e416]
+                  - button "52" [ref=f1e417]
+                  - button "53" [ref=f1e418]
+                  - button "54" [ref=f1e419]
+                  - button "55" [ref=f1e420]
+                  - button "56" [ref=f1e421]
+                  - button "57" [ref=f1e422]
+                  - button "58" [ref=f1e423]
+                  - button "59" [ref=f1e424]
+  - generic [ref=f1e9]:
+    - generic "Toggle devtools panel" [ref=f1e10] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f1e16] [cursor=pointer]

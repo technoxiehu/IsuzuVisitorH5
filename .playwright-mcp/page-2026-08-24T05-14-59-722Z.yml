@@ -1,0 +1,52 @@
+- generic [ref=f3e1]:
+  - generic [ref=f3e15]:
+    - heading "访客申请单" [level=2] [ref=f3e16]
+    - generic [ref=f3e17]:
+      - button "*被访问人 " [ref=f3e18] [cursor=pointer]:
+        - generic [ref=f3e19]: "*被访问人"
+        - textbox "被访问人" [ref=f3e22]:
+          - /placeholder: 点击选择被访问人
+        - generic [ref=f3e23]: 
+      - button "*开始时间 " [ref=f3e24] [cursor=pointer]:
+        - generic [ref=f3e25]: "*开始时间"
+        - textbox "开始时间" [ref=f3e28]:
+          - /placeholder: 请选择开始时间
+        - generic [ref=f3e29]: 
+      - button "*结束时间 " [ref=f3e30] [cursor=pointer]:
+        - generic [ref=f3e31]: "*结束时间"
+        - textbox "结束时间" [ref=f3e34]:
+          - /placeholder: 请选择结束时间
+        - generic [ref=f3e35]: 
+      - generic [ref=f3e36]:
+        - generic [ref=f3e37]: "*访问事由"
+        - generic [ref=f3e38]:
+          - textbox "访问事由" [ref=f3e40]:
+            - /placeholder: 请填写访问事由（200字以内）
+          - generic [ref=f3e41]: 0/200
+    - generic [ref=f3e42]:
+      - generic [ref=f3e43]: 随行人员（可选，最多 5 人）0/5
+      - button " 添加随行人员" [ref=f3e44] [cursor=pointer]:
+        - generic [ref=f3e45]:
+          - generic [ref=f3e46]: 
+          - generic [ref=f3e47]: 添加随行人员
+    - button "提交申请" [disabled] [ref=f3e48]
+    - button [ref=f3e51]
+    - dialog [ref=f3e52]:
+      - generic [ref=f3e53]:
+        - heading "选择被访人" [level=3] [ref=f3e54]
+        - generic [ref=f3e55]:
+          - generic [ref=f3e59]:
+            - generic [ref=f3e60]: 
+            - searchbox "请输入被访人姓名" [ref=f3e64]: 李凡
+          - button "搜索" [active] [ref=f3e66] [cursor=pointer]
+        - radiogroup [ref=f3e78]:
+          - button " 李凡 规划财务部" [ref=f3e80] [cursor=pointer]:
+            - generic [ref=f3e81]:
+              - radio " 李凡" [ref=f3e82]:
+                - generic [ref=f3e83]: 
+                - generic [ref=f3e85]: 李凡
+              - generic [ref=f3e86]: 规划财务部
+        - button "确认" [ref=f3e71] [cursor=pointer]
+  - generic [ref=f3e2]:
+    - generic "Toggle devtools panel" [ref=f3e3] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f3e9] [cursor=pointer]

@@ -3,10 +3,18 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import SplashScreen from '@/components/SplashScreen.vue'
 import NoticeGate from '@/components/NoticeGate.vue'
+import WeChatGate from '@/components/WeChatGate.vue'
+import { isWeChat } from '@/utils/wechat'
 
 const route = useRoute()
-// 审批页（被访问人经邮件链接进入）不展示开屏动画与进场须知
+// 审批页（被访问人经邮件链接进入）不展示开屏动画与进场须知，也豁免微信环境拦截
 const isApprove = computed(() => route.name === 'approve')
+
+// 非微信环境阻断：仅生产构建启用（dev 浏览器调试不受影响）；
+// 命中时 WeChatGate 全屏常驻且不可关闭，并跳过 Splash/NoticeGate（避免动画空转）
+const wechatBlocked = computed(
+  () => import.meta.env.PROD && route.name !== 'approve' && !isWeChat()
+)
 
 // 开屏动画：每次进入都展示，5 秒自动结束（可跳过）；
 // 覆盖层期间路由照常渲染，Entry 的分流请求在底下并发完成
@@ -23,8 +31,10 @@ const noticeVisible = computed(() => !isApprove.value && splashLeaving.value)
 </script>
 
 <template>
+  <!-- 非微信环境阻断层：最高层级，无关闭入口，遮挡所有底层内容 -->
+  <WeChatGate v-if="wechatBlocked" />
   <SplashScreen
-    v-if="!isApprove && !splashDone"
+    v-if="!isApprove && !splashDone && !wechatBlocked"
     @leaving="splashLeaving = true"
     @finish="splashDone = true"
   />

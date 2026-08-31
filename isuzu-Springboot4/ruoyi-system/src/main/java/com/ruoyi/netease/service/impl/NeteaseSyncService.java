@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.exception.ServiceException;
@@ -32,6 +34,9 @@ public class NeteaseSyncService
     private static final String CONFIG_DOMAIN = "netease.domain";
     private static final String SYNC_USER = "netease-sync";
     private static final int MAX_CONSECUTIVE_FAILURES = 3;
+
+    /** 网易业务错误码提取（如「网易 API 返回错误: code=-3, ...」） */
+    private static final Pattern NETEASE_CODE_PATTERN = Pattern.compile("code=(-?\\d+)");
 
     @Autowired
     private NeteaseApiClient apiClient;
@@ -200,10 +205,13 @@ public class NeteaseSyncService
                 catch (Exception e)
                 {
                     log.error("处理版本 {} 变更失败", rev, e);
-                    // 检查是否版本不存在
-                    if (e.getMessage() != null && e.getMessage().contains("-4"))
+                    // 解析网易业务错误码，判定该版本是否可读
+                    Integer neteaseCode = extractNeteaseCode(e);
+                    // 版本不存在(-4)或版本数据不可读(-3，网易服务端组装失败)：无法通过增量通道获取，
+                    // 降级为全量同步绕过毒版本，避免本地版本号永久卡死、同版本夜夜重试
+                    if (neteaseCode != null && (neteaseCode == -3 || neteaseCode == -4))
                     {
-                        log.warn("版本 {} 不存在，降级为全量同步", rev);
+                        log.warn("版本 {} 无法读取 (code={})，降级为全量同步", rev, neteaseCode);
                         updateSysConfig(CONFIG_REVISION, "0");
                         syncFull();
                         return;
@@ -254,6 +262,21 @@ public class NeteaseSyncService
             throw new ServiceException("若依部门树根节点缺失（parent_id=0），请先初始化 sys_dept");
         }
         return roots.get(0).getDeptId();
+    }
+
+    /**
+     * 从异常信息中解析网易业务错误码（如「网易 API 返回错误: code=-3, ...」），
+     * 解析不到返回 null
+     */
+    private Integer extractNeteaseCode(Exception e)
+    {
+        String message = e.getMessage();
+        if (message == null)
+        {
+            return null;
+        }
+        Matcher matcher = NETEASE_CODE_PATTERN.matcher(message);
+        return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
     }
 
     /**

@@ -5,6 +5,7 @@
 --   1. visitor_entry 入场/放行记录表 DDL（v1.10，与 docs/03_接口契约.md §2.6 一致）
 --   2. 门卫角色 + 门卫菜单 + 权限按钮
 --   3. 角色-菜单关联（门卫角色仅可见来访核验/入场记录两个菜单）
+--   4. 入场记录导出按钮（visitor:entry:export，导出全量明文，见 docs/03_接口契约.md §3.16）
 -- 幂等：可重复执行（插入前先按 menu_id/role_id/表名判断存在则跳过）
 -- ============================================================
 
@@ -59,7 +60,20 @@ where menu_id in (2000, 2001, 2002, 2003)
   and not exists (select 1 from sys_role_menu rm where rm.role_id = 3 and rm.menu_id = sys_menu.menu_id);
 
 -- ------------------------------------------------------------
--- 4. 将门卫角色分配给具体门卫账号
+-- 4. 入场记录导出按钮（挂在入场记录菜单 2002 下；管理员经 admin 通配权限自动放行）
+-- ------------------------------------------------------------
+insert into sys_menu(menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark)
+select 2004, '入场记录导出', 2002, 1, '', null, 1, 0, 'F', '0', '0', 'visitor:entry:export', '#', 'admin', sysdate(), '入场记录-导出按钮(全量明文)'
+from dual where not exists (select 1 from sys_menu where menu_id = 2004);
+
+-- 角色-菜单关联（门卫 + 导出按钮2004）
+insert into sys_role_menu(role_id, menu_id)
+select 3, menu_id from sys_menu
+where menu_id in (2004)
+  and not exists (select 1 from sys_role_menu rm where rm.role_id = 3 and rm.menu_id = sys_menu.menu_id);
+
+-- ------------------------------------------------------------
+-- 5. 将门卫角色分配给具体门卫账号
 --    方式一：后台「系统管理-用户管理」编辑用户勾选「门卫」角色；
 --    方式二：执行下方语句（user_id 换成实际门卫账号，如 sys_user 中 id=2 的普通用户）：
 -- insert into sys_user_role(user_id, role_id) select 2, 3

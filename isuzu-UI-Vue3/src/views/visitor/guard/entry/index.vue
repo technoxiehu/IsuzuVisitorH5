@@ -24,6 +24,7 @@
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['visitor:entry:export']">导出</el-button>
       </el-form-item>
     </el-form>
 
@@ -100,13 +101,7 @@ function getList() {
 }
 
 function handleQuery() {
-  if (dateRange.value && dateRange.value.length === 2) {
-    queryParams.beginTime = dateRange.value[0]
-    queryParams.endTime = dateRange.value[1]
-  } else {
-    queryParams.beginTime = undefined
-    queryParams.endTime = undefined
-  }
+  syncDateRange()
   queryParams.pageNum = 1
   getList()
 }
@@ -117,6 +112,27 @@ function resetQuery() {
   queryParams.beginTime = undefined
   queryParams.endTime = undefined
   handleQuery()
+}
+
+/** 同步日期范围到查询参数（搜索/导出共用） */
+function syncDateRange() {
+  if (dateRange.value && dateRange.value.length === 2) {
+    queryParams.beginTime = dateRange.value[0]
+    queryParams.endTime = dateRange.value[1]
+  } else {
+    queryParams.beginTime = undefined
+    queryParams.endTime = undefined
+  }
+}
+
+/** 导出：按当前查询条件导出全部匹配行（非当前页），手机号/身份证为全量明文 */
+function handleExport() {
+  syncDateRange()
+  proxy.download('visitor/guard/entry/export', {
+    keyword: queryParams.keyword,
+    beginTime: queryParams.beginTime,
+    endTime: queryParams.endTime
+  }, `入场记录_${new Date().getTime()}.xlsx`)
 }
 
 onMounted(() => {

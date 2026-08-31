@@ -140,6 +140,15 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
         return list;
     }
 
+    /**
+     * 入场记录导出（§3.16）：与列表查询同条件、同排序，手机号/身份证不脱敏（全量明文，审计口径）
+     */
+    @Override
+    public List<GuardEntryVo> selectEntryExportList(String keyword, Date beginTime, Date endTime)
+    {
+        return visitorEntryMapper.selectEntryList(keyword, beginTime, endTime);
+    }
+
     /** 手机号脱敏：前 3 + **** + 后 4（幂等，含 * 或非 11 位原样返回） */
     private String maskPhone(String phone)
     {

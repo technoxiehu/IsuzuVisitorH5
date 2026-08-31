@@ -6,7 +6,7 @@ import com.ruoyi.visitor.domain.GuardCardVo;
 import com.ruoyi.visitor.domain.GuardEntryVo;
 
 /**
- * 门卫电脑端核验 业务层（v1.10，需若依登录态，见 docs/03_接口契约.md §3.13~§3.15）
+ * 门卫电脑端核验 业务层（v1.10，需若依登录态，见 docs/03_接口契约.md §3.13~§3.16）
  *
  * @author isuzu
  */
@@ -40,4 +40,14 @@ public interface IVisitorGuardService
      * @return 入场记录集合
      */
     public List<GuardEntryVo> selectEntryList(String keyword, Date beginTime, Date endTime);
+
+    /**
+     * 入场记录导出（§3.16）：与列表查询同条件、同排序，但手机号/身份证不脱敏（全量明文，审计口径）
+     *
+     * @param keyword 访客姓名/手机号/门卫姓名模糊（可空）
+     * @param beginTime 放行时间起（可空）
+     * @param endTime 放行时间止（可空）
+     * @return 入场记录集合（明文）
+     */
+    public List<GuardEntryVo> selectEntryExportList(String keyword, Date beginTime, Date endTime);
 }

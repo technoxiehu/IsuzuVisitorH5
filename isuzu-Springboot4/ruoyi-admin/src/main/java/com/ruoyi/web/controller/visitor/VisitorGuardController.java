@@ -51,17 +51,19 @@ public class VisitorGuardController extends BaseController
     }
 
     /**
-     * 门卫放行（新增入场记录；操作人取当前登录用户，权限 visitor:guard:entry）
+     * 门卫进出登记（新增进场/离厂事件；操作人取当前登录用户，权限 visitor:guard:entry）
+     * body.entryType：'0' 进场（缺省，兼容旧调用）/ '1' 离厂；在厂状态严格交替校验见 service
      */
     @PreAuthorize("@ss.hasPermi('visitor:guard:entry')")
     @PostMapping("/entry")
     public AjaxResult entry(@RequestBody Map<String, String> body)
     {
-        String entryId = visitorGuardService.createEntry(body.get("applicationId"), SecurityUtils.getUserId(),
-                SecurityUtils.getLoginUser().getUser().getNickName());
+        String entryType = body.get("entryType");
+        String entryId = visitorGuardService.createEntry(body.get("applicationId"), entryType,
+                SecurityUtils.getUserId(), SecurityUtils.getLoginUser().getUser().getNickName());
         Map<String, Object> data = new HashMap<>();
         data.put("entryId", entryId);
-        return AjaxResult.success("放行成功", data);
+        return AjaxResult.success("1".equals(entryType) ? "离厂成功" : "进场成功", data);
     }
 
     /**

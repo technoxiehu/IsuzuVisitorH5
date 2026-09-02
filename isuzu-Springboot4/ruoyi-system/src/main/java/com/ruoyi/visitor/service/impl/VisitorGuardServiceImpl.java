@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
@@ -84,15 +85,23 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
     }
 
     /**
-     * 门卫放行（§3.14）：校验申请单存在/未撤销/审批通过/当前时刻在访问窗口内，新增入场记录；
+     * 门卫进出登记（§3.14）：校验申请单存在/未撤销/审批通过/当前时刻在访问窗口内，
+     * 再按全历史最新事件做严格交替校验（在厂内禁再进场、厂外禁离厂），新增事件记录；
      * 无二次确认、不限次数、不改申请单状态；操作人（门卫）由 controller 从当前登录态传入
      */
     @Override
-    public String createEntry(String applicationId, Long operatorId, String operatorName)
+    @Transactional(rollbackFor = Exception.class)
+    public String createEntry(String applicationId, String entryType, Long operatorId, String operatorName)
     {
         if (StringUtils.isEmpty(applicationId))
         {
             throw new ServiceException("申请单ID不能为空", 400);
+        }
+        // 事件类型：缺省按进场处理（兼容旧前端不传 entryType 的调用），仅接受 '0'/'1'
+        String type = StringUtils.isEmpty(entryType) ? "0" : entryType;
+        if (!"0".equals(type) && !"1".equals(type))
+        {
+            throw new ServiceException("事件类型非法", 400);
         }
         VisitorApplication application = visitorApplicationMapper.selectApplicationById(applicationId);
         if (application == null)
@@ -112,9 +121,21 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
         {
             throw new ServiceException("该单据不在有效期内", 601);
         }
+        // 严格交替校验（v1.12）：在厂状态 = 全历史最新事件（不限当日，昨天进场未离厂今天仍在厂内）
+        VisitorEntry latest = visitorEntryMapper.selectLatestEvent(applicationId);
+        boolean onSite = latest != null && "0".equals(latest.getEntryType());
+        if ("0".equals(type) && onSite)
+        {
+            throw new ServiceException("访客已在厂内，请先离厂", 601);
+        }
+        if ("1".equals(type) && !onSite)
+        {
+            throw new ServiceException("访客不在厂内，无法离厂", 601);
+        }
         VisitorEntry entry = new VisitorEntry();
         entry.setEntryId(IdUtils.fastUUID());
         entry.setApplicationId(applicationId);
+        entry.setEntryType(type);
         entry.setOperatorId(operatorId);
         entry.setOperatorName(operatorName);
         entry.setCreateTime(now);

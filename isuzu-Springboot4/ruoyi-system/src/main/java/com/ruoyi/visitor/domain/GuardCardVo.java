@@ -61,12 +61,15 @@ public class GuardCardVo
     /** 随行人员名单(身份证号脱敏) */
     private List<VisitorCompanion> companions;
 
-    /** 当日放行次数 */
+    /** 当日进场次数(v1.12 起仅统计 entry_type='0') */
     private Integer entryCount;
 
-    /** 当日最近一次放行时间(无则 null) */
+    /** 当日最近一次进出事件时间(无则 null) */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date lastEntryTime;
+
+    /** 全历史最新事件类型(0进场 1离厂；null=无事件。v1.12 新增，推导访客在厂状态：'0'→在厂内) */
+    private String lastEventType;
 
     public String getApplicationId()
     {
@@ -236,5 +239,15 @@ public class GuardCardVo
     public void setLastEntryTime(Date lastEntryTime)
     {
         this.lastEntryTime = lastEntryTime;
+    }
+
+    public String getLastEventType()
+    {
+        return lastEventType;
+    }
+
+    public void setLastEventType(String lastEventType)
+    {
+        this.lastEventType = lastEventType;
     }
 }

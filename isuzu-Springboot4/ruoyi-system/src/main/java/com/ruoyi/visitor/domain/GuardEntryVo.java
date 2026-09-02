@@ -9,6 +9,7 @@ import com.ruoyi.common.annotation.Excel;
  *
  * 列表接口（§3.15）手机号/身份证号返回前已脱敏；导出接口（§3.16）为全量明文（审计口径）。
  * 申请单已撤销/删除的记录仍展示（历史事实，审计留存）。
+ * v1.12 新增 entryType（0进场 1离厂），导出经 readConverterExp 转中文。
  * @Excel 注解仅用于导出，不影响 JSON 序列化。
  *
  * @author isuzu
@@ -20,6 +21,10 @@ public class GuardEntryVo
 
     /** 申请单号 */
     private String applicationId;
+
+    /** 事件类型(0进场 1离厂；v1.12 新增，存量数据'0'视为进场) */
+    @Excel(name = "类型", readConverterExp = "0=进场,1=离厂")
+    private String entryType;
 
     /** 访客姓名 */
     @Excel(name = "访客姓名")
@@ -82,6 +87,16 @@ public class GuardEntryVo
     public void setApplicationId(String applicationId)
     {
         this.applicationId = applicationId;
+    }
+
+    public String getEntryType()
+    {
+        return entryType;
+    }
+
+    public void setEntryType(String entryType)
+    {
+        this.entryType = entryType;
     }
 
     public String getVisitorName()

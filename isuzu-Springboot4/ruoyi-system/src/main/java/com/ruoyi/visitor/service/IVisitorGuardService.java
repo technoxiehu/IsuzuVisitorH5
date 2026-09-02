@@ -22,14 +22,17 @@ public interface IVisitorGuardService
     public List<GuardCardVo> selectGuardCardList(String keyword, String date);
 
     /**
-     * 门卫放行：新增入场记录（无二次确认、不限次数、不改申请单状态；校验单据有效且当前时刻在访问窗口内）
+     * 门卫进出登记：新增进场/离厂事件记录（无二次确认、不限次数、不改申请单状态；校验单据有效且当前时刻在访问窗口内）
+     *
+     * v1.12 起严格交替校验：在厂内（全历史最新事件为进场）不允许再进场，厂外（无事件或最新为离厂）不允许离厂
      *
      * @param applicationId 申请单号
-     * @param operatorId 放行门卫(sys_user.user_id)
-     * @param operatorName 放行门卫姓名(冗余)
+     * @param entryType 事件类型（'0' 进场 / '1' 离厂）
+     * @param operatorId 操作门卫(sys_user.user_id)
+     * @param operatorName 操作门卫姓名(冗余)
      * @return 入场记录ID
      */
-    public String createEntry(String applicationId, Long operatorId, String operatorName);
+    public String createEntry(String applicationId, String entryType, Long operatorId, String operatorName);
 
     /**
      * 查询入场记录（门卫可见全部，按放行时间倒序；展示字段脱敏）

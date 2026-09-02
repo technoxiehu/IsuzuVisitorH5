@@ -9,7 +9,7 @@ export function listGuardCard(query) {
   })
 }
 
-// 门卫放行（新增入场记录，接口契约 §3.14，需登录）
+// 门卫进出登记（新增进场/离厂事件，接口契约 §3.14，需登录；data.entryType：'0' 进场 / '1' 离厂）
 export function createGuardEntry(data) {
   return request({
     url: '/visitor/guard/entry',

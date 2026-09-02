@@ -45,8 +45,15 @@
           {{ formatRange(scope.row.startTime, scope.row.endTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="放行门卫" prop="operatorName" min-width="100" />
-      <el-table-column label="放行时间" prop="entryTime" min-width="160" />
+      <el-table-column label="类型" prop="entryType" width="80" align="center">
+        <template #default="scope">
+          <el-tag :type="scope.row.entryType === '1' ? 'warning' : 'primary'" effect="plain" size="small">
+            {{ scope.row.entryType === '1' ? '离厂' : '进场' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作门卫" prop="operatorName" min-width="100" />
+      <el-table-column label="事件时间" prop="entryTime" min-width="160" />
     </el-table>
 
     <pagination

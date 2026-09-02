@@ -26,12 +26,20 @@ public interface VisitorEntryMapper
             @Param("nextDayStart") Date nextDayStart);
 
     /**
-     * 新增入场记录（门卫放行，无二次确认、不限次数、不改申请单状态）
+     * 新增入场记录（门卫进场/离厂事件，无二次确认、不限次数、不改申请单状态）
      *
-     * @param entry 入场记录
+     * @param entry 入场记录（含 entryType：0 进场 1 离厂）
      * @return 影响行数
      */
     public int insertEntry(VisitorEntry entry);
+
+    /**
+     * 查询申请单全历史最新一条进出事件（v1.12：推导访客在厂状态，不限当日，跨天未闭合仍可见）
+     *
+     * @param applicationId 申请单号
+     * @return 最新事件（无任何事件时 null）
+     */
+    public VisitorEntry selectLatestEvent(@Param("applicationId") String applicationId);
 
     /**
      * 分页查询入场记录（JOIN 申请单/访客表；申请单已撤销的记录仍展示，历史事实审计留存）

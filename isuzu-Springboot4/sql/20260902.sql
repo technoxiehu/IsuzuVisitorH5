@@ -1,1 +1,2 @@
 ALTER TABLE visitor_application ADD COLUMN remark varchar(200) DEFAULT NULL COMMENT '备注(可选,≤200字)';
+ALTER TABLE visitor_entry ADD COLUMN entry_type char(1) NOT NULL DEFAULT '0' COMMENT '事件类型(0进场 1离厂)';

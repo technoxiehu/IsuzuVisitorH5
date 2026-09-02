@@ -6,7 +6,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 /**
  * 入场/放行记录对象 visitor_entry（门卫电脑端 v1.10，见 docs/03_接口契约.md §2.6）
  *
- * 同一申请单不限放行次数；放行=新增一条记录，不改动申请单状态；只存申请单 ID，不冗余访客信息。
+ * 同一申请单不限进出次数；进场/离厂=新增一条事件记录，不改动申请单状态；只存申请单 ID，不冗余访客信息。
+ * v1.12 起 entry_type 区分事件类型，访客在厂状态由该申请单全历史最新事件推导（严格交替：进场→离厂→进场…）。
  *
  * @author isuzu
  */
@@ -17,6 +18,9 @@ public class VisitorEntry
 
     /** 申请单号 */
     private String applicationId;
+
+    /** 事件类型(0进场 1离厂；v1.12 新增，存量数据默认'0'视为进场) */
+    private String entryType;
 
     /** 放行门卫(sys_user.user_id) */
     private Long operatorId;
@@ -46,6 +50,16 @@ public class VisitorEntry
     public void setApplicationId(String applicationId)
     {
         this.applicationId = applicationId;
+    }
+
+    public String getEntryType()
+    {
+        return entryType;
+    }
+
+    public void setEntryType(String entryType)
+    {
+        this.entryType = entryType;
     }
 
     public Long getOperatorId()

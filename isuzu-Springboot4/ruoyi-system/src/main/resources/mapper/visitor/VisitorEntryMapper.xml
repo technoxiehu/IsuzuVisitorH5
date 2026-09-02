@@ -7,6 +7,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="VisitorEntry" id="VisitorEntryResult">
         <id     property="entryId"       column="entry_id"       />
         <result property="applicationId" column="application_id" />
+        <result property="entryType"     column="entry_type"     />
         <result property="operatorId"    column="operator_id"    />
         <result property="operatorName"  column="operator_name"  />
         <result property="createTime"    column="create_time"    />
@@ -29,11 +30,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="approveTime"     column="approve_time"     />
         <result property="entryCount"      column="entry_count"      />
         <result property="lastEntryTime"   column="last_entry_time"  />
+        <result property="lastEventType"   column="last_event_type"  />
     </resultMap>
 
     <resultMap type="GuardEntryVo" id="GuardEntryResult">
         <result property="entryId"        column="entry_id"        />
         <result property="applicationId"  column="application_id"  />
+        <result property="entryType"      column="entry_type"      />
         <result property="visitorName"    column="visitor_name"    />
         <result property="visitorCompany" column="visitor_company" />
         <result property="visitorPhone"   column="visitor_phone"   />
@@ -48,17 +51,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <!-- 门卫有效单据卡片（§3.13）：审批通过(1)、未撤销(0)且访问窗口覆盖当天
          （start_time < 次日零点 且 end_time >= 当日零点，日期粒度开区间判覆盖）；
-         entry_count/last_entry_time 为该申请单当日放行统计（子查询，当日区间同卡片窗口） -->
+         entry_count 为当日进场次数（v1.12 起仅统计 entry_type='0'）；
+         last_entry_time 为当日最近一次进出事件时间；
+         last_event_type 为全历史最新事件类型（不限当日，跨天未闭合的在厂状态仍可推导，v1.12） -->
     <select id="selectGuardCardList" resultMap="GuardCardResult">
         select va.application_id, va.visitor_id, va.host_name, va.reason, va.start_time, va.end_time, va.status, va.approve_time,
                v.name as visitor_name, v.phone as visitor_phone, v.id_card as visitor_id_card,
                v.company as visitor_company, v.avatar as visitor_avatar, v.plate_no,
                (select count(1) from visitor_entry e1
-                 where e1.application_id = va.application_id
+                 where e1.application_id = va.application_id and e1.entry_type = '0'
                    and e1.create_time &gt;= #{dateStart} and e1.create_time &lt; #{nextDayStart}) as entry_count,
                (select max(e2.create_time) from visitor_entry e2
                  where e2.application_id = va.application_id
-                   and e2.create_time &gt;= #{dateStart} and e2.create_time &lt; #{nextDayStart}) as last_entry_time
+                   and e2.create_time &gt;= #{dateStart} and e2.create_time &lt; #{nextDayStart}) as last_entry_time,
+               (select e3.entry_type from visitor_entry e3
+                 where e3.application_id = va.application_id
+                 order by e3.create_time desc limit 1) as last_event_type
         from visitor_application va
         left join visitor v on va.visitor_id = v.visitor_id
         where va.status = '1' and va.del_flag = '0'
@@ -76,14 +84,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <insert id="insertEntry" parameterType="VisitorEntry">
-        insert into visitor_entry(entry_id, application_id, operator_id, operator_name, create_time)
-        values (#{entryId}, #{applicationId}, #{operatorId}, #{operatorName}, #{createTime})
+        insert into visitor_entry(entry_id, application_id, entry_type, operator_id, operator_name, create_time)
+        values (#{entryId}, #{applicationId}, #{entryType}, #{operatorId}, #{operatorName}, #{createTime})
     </insert>
+
+    <!-- 全历史最新进出事件（v1.12）：按事件时间倒序取第一条，推导在厂状态（交替校验依据） -->
+    <select id="selectLatestEvent" parameterType="String" resultMap="VisitorEntryResult">
+        select entry_id, application_id, entry_type, operator_id, operator_name, create_time
+        from visitor_entry
+        where application_id = #{applicationId}
+        order by create_time desc
+        limit 1
+    </select>
 
     <!-- 入场记录查询（§3.15）：JOIN 申请单/访客表取展示字段；
          申请单已撤销/删除的记录仍展示（历史事实，审计留存），故不过滤 va.del_flag -->
     <select id="selectEntryList" resultMap="GuardEntryResult">
-        select ve.entry_id, ve.application_id, ve.operator_name, ve.create_time as entry_time,
+        select ve.entry_id, ve.application_id, ve.entry_type, ve.operator_name, ve.create_time as entry_time,
                v.name as visitor_name, v.company as visitor_company, v.phone as visitor_phone,
                v.id_card as visitor_id_card, v.plate_no,
                va.host_name, va.start_time, va.end_time

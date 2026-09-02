@@ -34,7 +34,7 @@
           v-for="card in cards"
           :key="card.applicationId"
           class="guard-card"
-          :class="{ 'guard-card--released': card.entryCount > 0 }"
+          :class="isOnSite(card) ? 'guard-card--on' : (card.lastEventType ? 'guard-card--off' : '')"
         >
           <!-- 卡片头：头像 + 姓名/单位 + 状态 -->
           <div class="guard-card__head">
@@ -47,12 +47,12 @@
               <el-tag v-if="card.plateNo" size="small" effect="plain" class="guard-card__plate">{{ card.plateNo }}</el-tag>
             </div>
             <el-tag
-              :type="card.entryCount > 0 ? 'success' : 'primary'"
+              :type="isOnSite(card) ? 'success' : (card.lastEventType ? 'info' : 'primary')"
               effect="light"
               round
               class="guard-card__status"
             >
-              {{ card.entryCount > 0 ? `已放行 ${card.entryCount} 次` : '待放行' }}
+              {{ isOnSite(card) ? '在厂内' : (card.lastEventType ? '已离厂' : '待进场') }}
             </el-tag>
           </div>
 
@@ -68,21 +68,34 @@
             </el-descriptions-item>
           </el-descriptions>
 
-          <!-- 卡片脚：放行记录 + 放行按钮 -->
+          <!-- 卡片脚：进出记录 + 进场/离厂按钮（严格交替：在厂内禁进场、厂外禁离厂） -->
           <div class="guard-card__foot">
             <span class="guard-card__last">
-              {{ card.lastEntryTime ? `最近放行 ${card.lastEntryTime}` : '尚未放行' }}
+              {{ card.lastEntryTime ? `最近事件 ${card.lastEntryTime}` : '尚未登记' }}<template v-if="card.entryCount > 0"> · 今日进场 {{ card.entryCount }} 次</template>
             </span>
-            <el-button
-              v-hasPermi="['visitor:guard:entry']"
-              type="primary"
-              :plain="card.entryCount > 0"
-              :loading="releasingId === card.applicationId"
-              class="guard-card__release"
-              @click="handleRelease(card)"
-            >
-              {{ card.entryCount > 0 ? '再次放行' : '放行' }}
-            </el-button>
+            <span class="guard-card__actions">
+              <el-button
+                v-hasPermi="['visitor:guard:entry']"
+                type="primary"
+                :disabled="isOnSite(card)"
+                :loading="releasingKey === `${card.applicationId}:0`"
+                class="guard-card__action"
+                @click="handleEntry(card, '0')"
+              >
+                进场
+              </el-button>
+              <el-button
+                v-hasPermi="['visitor:guard:entry']"
+                type="warning"
+                plain
+                :disabled="!isOnSite(card)"
+                :loading="releasingKey === `${card.applicationId}:1`"
+                class="guard-card__action"
+                @click="handleEntry(card, '1')"
+              >
+                离厂
+              </el-button>
+            </span>
           </div>
         </div>
       </template>
@@ -107,7 +120,8 @@ const loading = ref(false)
 const refreshing = ref(false)
 const keyword = ref('')
 const countdown = ref(REFRESH_INTERVAL)
-const releasingId = ref('')
+// 进行中的进出请求标识（`${applicationId}:${entryType}`，防同卡片双按钮交叉 loading）
+const releasingKey = ref('')
 
 let refreshTimer = null
 let tickTimer = null
@@ -160,16 +174,21 @@ function handleSearch() {
   getList(false)
 }
 
-/** 放行：无二次确认、不限次数；成功后静默刷新以更新「已放行」标记 */
-async function handleRelease(card) {
-  releasingId.value = card.applicationId
+/** 在厂状态推导：全历史最新事件为进场即在厂内（跨天未闭合仍视为在厂，与后端口径一致） */
+function isOnSite(card) {
+  return card.lastEventType === '0'
+}
+
+/** 进出登记（entryType '0' 进场 / '1' 离厂）：无二次确认；前端按钮已互斥，后端交替校验兜底；成功后静默刷新 */
+async function handleEntry(card, entryType) {
+  releasingKey.value = `${card.applicationId}:${entryType}`
   try {
-    await createGuardEntry({ applicationId: card.applicationId })
-    proxy.$modal.msgSuccess('放行成功')
+    await createGuardEntry({ applicationId: card.applicationId, entryType })
+    proxy.$modal.msgSuccess(entryType === '1' ? '离厂成功' : '进场成功')
   } catch (e) {
-    // 601/500 等错误已由 request 拦截器统一提示，此处静默
+    // 601（在厂内禁进场/厂外禁离厂等）已由 request 拦截器统一提示，此处静默
   } finally {
-    releasingId.value = ''
+    releasingKey.value = ''
     getList(true)
   }
 }
@@ -276,10 +295,15 @@ defineExpose({ getList })
   transform: translateY(-2px);
 }
 
-/* 已放行：绿色左描边 + 浅绿底角标 */
-.guard-card--released {
+/* 在厂内：绿色左描边 + 浅绿底 */
+.guard-card--on {
   border-left-color: var(--el-color-success);
   background: linear-gradient(180deg, #ffffff 0%, #f8fbf7 100%);
+}
+
+/* 已离厂：灰色左描边 */
+.guard-card--off {
+  border-left-color: var(--el-color-info);
 }
 
 .guard-card__head {
@@ -360,11 +384,14 @@ defineExpose({ getList })
   color: #909399;
 }
 
-.guard-card__release {
+/* 进场/离厂双按钮组 */
+.guard-card__actions {
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
 }
 
-.guard-card--released .guard-card__release {
-  font-weight: 600;
+.guard-card__action + .guard-card__action {
+  margin-left: 8px;
 }
 </style>

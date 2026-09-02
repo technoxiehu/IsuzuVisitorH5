@@ -18,6 +18,7 @@ export default defineConfig({
     },
   },
   server: {
+    open: true,
     proxy: {
       // 访客接口代理到若依后端（docs/03_接口契约.md §6）
       '/visitor': {

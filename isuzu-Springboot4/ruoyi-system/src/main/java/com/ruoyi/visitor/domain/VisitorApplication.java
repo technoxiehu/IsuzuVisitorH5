@@ -41,6 +41,9 @@ public class VisitorApplication
     /** 访问事由 */
     private String reason;
 
+    /** 备注(可选,≤200) */
+    private String remark;
+
     /** 状态(0未审批 1通过 2拒绝) */
     private String status;
 
@@ -147,6 +150,17 @@ public class VisitorApplication
         this.reason = reason;
     }
 
+    @Size(min = 0, max = 200, message = "备注长度不能超过200个字符")
+    public String getRemark()
+    {
+        return remark;
+    }
+
+    public void setRemark(String remark)
+    {
+        this.remark = remark;
+    }
+
     public String getStatus()
     {
         return status;
@@ -247,6 +261,7 @@ public class VisitorApplication
             .append("startTime", getStartTime())
             .append("endTime", getEndTime())
             .append("reason", getReason())
+            .append("remark", getRemark())
             .append("status", getStatus())
             .append("approveTime", getApproveTime())
             .append("createTime", getCreateTime())

@@ -37,6 +37,9 @@ public class ApproveDetailVo
     /** 访问事由 */
     private String reason;
 
+    /** 备注(可选,≤200) */
+    private String remark;
+
     /** 状态(0未审批 1通过 2拒绝) */
     private String status;
 
@@ -125,6 +128,16 @@ public class ApproveDetailVo
     public void setReason(String reason)
     {
         this.reason = reason;
+    }
+
+    public String getRemark()
+    {
+        return remark;
+    }
+
+    public void setRemark(String remark)
+    {
+        this.remark = remark;
     }
 
     public String getStatus()

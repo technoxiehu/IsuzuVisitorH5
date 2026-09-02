@@ -16,7 +16,7 @@ const store = useVisitorStore()
 // 编辑模式：带 applicationId 进入时回显原单，提交时后端撤销原单并新建（PRD v1.9）
 const editApplicationId = computed(() => route.query.applicationId || '')
 
-const form = reactive({ hostId: null, hostName: '', startTime: '', endTime: '', reason: '' })
+const form = reactive({ hostId: null, hostName: '', startTime: '', endTime: '', reason: '', remark: '' })
 
 // ---- 随行人员（可选，最多 5 人，PRD v1.4 §5.3）----
 const MAX_COMPANIONS = 5
@@ -100,11 +100,20 @@ function onHostConfirm() {
 }
 
 // ---- 日期选择（PRD v1.10：以日期为最小单位，仅年月日，不选具体时间）----
-const MAX_VISIT_DAYS = 7 // 含首尾最多 7 天（结束日期最晚 = 开始日期 + 6 天，v1.10）
+// 访问跨度上限 2 个自然月（结束日期最晚 = 开始日期 + 2 个月）
+const MAX_VISIT_MONTHS = 2
 const now = new Date()
 const minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 const maxDate = new Date(minDate.getFullYear() + 1, minDate.getMonth(), minDate.getDate())
 const nowStr = formatDateTime(new Date()) // 本地时间 yyyy-MM-dd HH:mm（勿用 toISOString，其返回 UTC 时间）
+
+/** 加 N 个自然月（日溢出截断到目标月末，如 12-31 + 2 月 = 次年 2 月 28/29 日，与后端 Calendar.add 口径一致） */
+function addMonths(date, months) {
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1)
+  const day = Math.min(date.getDate(), new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate())
+  target.setDate(day)
+  return target
+}
 
 const showDatePicker = ref(false)
 const datePickerType = ref('start')
@@ -129,8 +138,8 @@ function onDateConfirm() {
       return
     }
     form.startTime = formatDateTime(date).slice(0, 10)
-    // 结束日期早于新开始日期、或跨度超过 7 天（含首尾）时清空
-    const maxEnd = new Date(date.getTime() + (MAX_VISIT_DAYS - 1) * 86400000)
+    // 结束日期早于新开始日期、或跨度超过 2 个自然月时清空
+    const maxEnd = addMonths(date, MAX_VISIT_MONTHS)
     if (form.endTime && (form.endTime < form.startTime || new Date(`${form.endTime}T00:00:00`) > maxEnd)) {
       form.endTime = ''
     }
@@ -146,9 +155,9 @@ function onDateConfirm() {
       showToast('结束日期不能早于开始日期')
       return
     }
-    // 访问跨度不能超过 7 天（含首尾，v1.10）
-    if (date > new Date(startDay.getTime() + (MAX_VISIT_DAYS - 1) * 86400000)) {
-      showToast('访问时间不能超过7天')
+    // 访问跨度不能超过 2 个自然月（含首尾，与后端校验口径一致）
+    if (date > addMonths(startDay, MAX_VISIT_MONTHS)) {
+      showToast('访问时间不能超过2个月')
       return
     }
     form.endTime = formatDateTime(date).slice(0, 10)
@@ -203,6 +212,7 @@ async function onSubmit() {
       startTime: `${form.startTime} 00:00:00`,
       endTime: `${form.endTime} 23:59:59`,
       reason: form.reason.trim(),
+      remark: form.remark.trim(),
       companions: companions.value.map((c) => ({ name: c.name.trim(), idCard: c.idCard.trim() })),
       submitToken: submitToken.value,
       replaceApplicationId: editApplicationId.value || undefined,
@@ -225,7 +235,7 @@ function onSuccessClose() {
 
 // ---- 编辑模式：拉取原单详情回显（详情接口仅待审批可查；已审批/已撤销时提示并返回列表）----
 // 原始值快照（提交前未修改检测的基准）
-const original = reactive({ hostId: null, startTime: '', endTime: '', reason: '', companions: [] })
+const original = reactive({ hostId: null, startTime: '', endTime: '', reason: '', remark: '', companions: [] })
 
 async function loadEditData() {
   try {
@@ -237,12 +247,14 @@ async function loadEditData() {
     form.startTime = (d.startTime || '').slice(0, 10)
     form.endTime = (d.endTime || '').slice(0, 10)
     form.reason = d.reason || ''
+    form.remark = d.remark || ''
     companions.value = (d.companions || []).map((c) => ({ name: c.name, idCard: c.idCard }))
     // 快照原始值（副本，避免后续编辑污染基准）
     original.hostId = d.hostId
     original.startTime = form.startTime
     original.endTime = form.endTime
     original.reason = form.reason
+    original.remark = form.remark
     original.companions = companions.value.map((c) => ({ ...c }))
   } catch {
     router.replace('/list')
@@ -255,6 +267,7 @@ function isModified() {
   if (form.startTime !== original.startTime) return true
   if (form.endTime !== original.endTime) return true
   if (form.reason.trim() !== original.reason.trim()) return true
+  if (form.remark.trim() !== original.remark.trim()) return true
   const norm = (list) => list.map((c) => ({ name: c.name.trim(), idCard: c.idCard.trim() }))
   const cur = norm(companions.value)
   const src = norm(original.companions)
@@ -294,6 +307,10 @@ onMounted(async () => {
       <!-- 访问事由 -->
       <van-field v-model="form.reason" label="访问事由" type="textarea" rows="3" maxlength="200" show-word-limit
         placeholder="请填写访问事由（200字以内）" required />
+
+      <!-- 备注（可选，≤200 字） -->
+      <van-field v-model="form.remark" label="备注" type="textarea" rows="2" maxlength="200" show-word-limit
+        placeholder="请填写备注（选填，200字以内）" />
     </div>
 
     <!-- 随行人员（可选，最多 5 人；已添加的行须完整且不重复才可提交） -->

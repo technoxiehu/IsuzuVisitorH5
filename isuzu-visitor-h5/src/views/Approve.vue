@@ -90,6 +90,7 @@ async function onApprove(action) {
           <van-cell title="开始日期" :value="(detail.startTime || '').slice(0, 10)" />
           <van-cell title="结束日期" :value="(detail.endTime || '').slice(0, 10)" />
           <van-cell title="访问事由" :value="detail.reason" />
+          <van-cell v-if="detail.remark" title="备注" :value="detail.remark" />
         </van-cell-group>
         <!-- 随行人员名单（PRD v1.4/v1.10 §5.7：固定显示标题与名单/空态；接口已保证脱敏，此处组件内再兜底） -->
         <CompanionList class="approve-companions" :companions="detail.companions || []" />

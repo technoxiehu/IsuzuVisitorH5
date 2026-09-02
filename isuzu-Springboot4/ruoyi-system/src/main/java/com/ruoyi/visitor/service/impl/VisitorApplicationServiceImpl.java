@@ -1,6 +1,7 @@
 package com.ruoyi.visitor.service.impl;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -311,10 +312,17 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         {
             throw new ServiceException("结束时间必须晚于开始时间", 400);
         }
-        // 访问跨度不超过 7 天（含首尾，日期粒度；结束日期最晚 = 开始日期 + 6 天，v1.10）
-        if (DateUtils.differentDaysByMillisecond(application.getStartTime(), application.getEndTime()) > 6)
+        // 访问跨度不超过 2 个自然月（含首尾，日期粒度；结束日期最晚 = 开始日期 + 2 个月，
+        // Calendar.MONTH 加月时日溢出自动截断到目标月末，如 12-31 + 2 月 = 次年 2 月 28/29 日）
+        Calendar maxEnd = Calendar.getInstance();
+        maxEnd.setTime(application.getStartTime());
+        maxEnd.add(Calendar.MONTH, 2);
+        maxEnd.set(Calendar.HOUR_OF_DAY, 23);
+        maxEnd.set(Calendar.MINUTE, 59);
+        maxEnd.set(Calendar.SECOND, 59);
+        if (application.getEndTime().after(maxEnd.getTime()))
         {
-            throw new ServiceException("访问时间不能超过7天", 400);
+            throw new ServiceException("访问时间不能超过2个月", 400);
         }
         if (StringUtils.isEmpty(application.getReason()))
         {
@@ -323,6 +331,11 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         if (application.getReason().length() > 200)
         {
             throw new ServiceException("访问事由长度不能超过200个字符", 400);
+        }
+        // 备注（可选）：≤200 字符
+        if (application.getRemark() != null && application.getRemark().length() > 200)
+        {
+            throw new ServiceException("备注长度不能超过200个字符", 400);
         }
         // 随行人员（可选）：数量/姓名/身份证号校验
         checkCompanions(application.getCompanions());
@@ -500,6 +513,7 @@ public class VisitorApplicationServiceImpl implements IVisitorApplicationService
         detail.setStartTime(application.getStartTime());
         detail.setEndTime(application.getEndTime());
         detail.setReason(application.getReason());
+        detail.setRemark(application.getRemark());
         detail.setStatus(application.getStatus());
         detail.setCreateTime(application.getCreateTime());
 

@@ -1,0 +1,1 @@
+ALTER TABLE visitor_application ADD COLUMN remark varchar(200) DEFAULT NULL COMMENT '备注(可选,≤200字)';

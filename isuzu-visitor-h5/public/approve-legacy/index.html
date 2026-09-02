@@ -112,6 +112,7 @@
       <div class="cell"><span class="cell-label">开始日期</span><span class="cell-value" id="v-start">&mdash;</span></div>
       <div class="cell"><span class="cell-label">结束日期</span><span class="cell-value" id="v-end">&mdash;</span></div>
       <div class="cell"><span class="cell-label">访问事由</span><span class="cell-value" id="v-reason"></span></div>
+      <div class="cell" id="v-remark-row" style="display:none"><span class="cell-label">备注</span><span class="cell-value" id="v-remark"></span></div>
 
       <div class="companions">
         <div class="companion-title">随行人员</div>
@@ -228,6 +229,14 @@
     document.getElementById('v-start').innerHTML = escapeHtml((app.startTime || '').substring(0, 10) || '\u2014')
     document.getElementById('v-end').innerHTML = escapeHtml((app.endTime || '').substring(0, 10) || '\u2014')
     document.getElementById('v-reason').innerHTML = escapeHtml(app.reason || '')
+    // 备注（可选）：有则显示，无则隐藏整行
+    var remarkRow = document.getElementById('v-remark-row')
+    if (app.remark) {
+      remarkRow.style.display = 'block'
+      document.getElementById('v-remark').innerHTML = escapeHtml(app.remark)
+    } else {
+      remarkRow.style.display = 'none'
+    }
 
     // 随行人员：接口已脱敏，此处 maskIdCard 再兜底（与 CompanionList.vue 一致）
     var list = app.companions || []

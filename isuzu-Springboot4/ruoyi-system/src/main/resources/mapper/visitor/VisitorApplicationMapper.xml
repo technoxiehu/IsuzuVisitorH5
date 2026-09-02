@@ -12,6 +12,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="startTime"     column="start_time"     />
         <result property="endTime"       column="end_time"       />
         <result property="reason"        column="reason"         />
+        <result property="remark"        column="remark"         />
         <result property="status"        column="status"         />
         <result property="approveTime"   column="approve_time"   />
         <result property="createTime"    column="create_time"    />
@@ -27,7 +28,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectApplicationVo">
-        select application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, approve_time, create_time, update_time, del_flag from visitor_application
+        select application_id, visitor_id, host_id, host_name, start_time, end_time, reason, remark, status, approve_time, create_time, update_time, del_flag from visitor_application
     </sql>
 
     <!-- 被访人查询：sys_user 正常且未删除，部门取 sys_dept.dept_name -->
@@ -52,9 +53,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <insert id="insertApplication" parameterType="VisitorApplication">
         insert into visitor_application(
-            application_id, visitor_id, host_id, host_name, start_time, end_time, reason, status, create_time
+            application_id, visitor_id, host_id, host_name, start_time, end_time, reason, remark, status, create_time
         ) values (
-            #{applicationId}, #{visitorId}, #{hostId}, #{hostName}, #{startTime}, #{endTime}, #{reason}, '0', #{createTime}
+            #{applicationId}, #{visitorId}, #{hostId}, #{hostName}, #{startTime}, #{endTime}, #{reason}, #{remark}, '0', #{createTime}
         )
     </insert>
 

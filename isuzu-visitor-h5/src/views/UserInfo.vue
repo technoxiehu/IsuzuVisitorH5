@@ -21,6 +21,8 @@ const errors = reactive({ name: '', phone: '', idCard: '', company: '', plateNo:
 const original = reactive({ name: '', phone: '', idCard: '', company: '', plateNo: '', avatar: '' })
 const fileList = ref([])
 const submitting = ref(false)
+// 无车进场（勾选后车牌非必填、输入禁用，提交空字符串；未勾选则车牌必填）
+const noCar = ref(false)
 
 // 18 位身份证格式（末位可 X，与 Application.vue 随行人员校验一致）
 const ID_CARD_RE = /^\d{17}[\dX]$/
@@ -45,6 +47,8 @@ onMounted(async () => {
     if (form.avatar) {
       fileList.value = [{ url: toAvatarUrl(form.avatar) }]
     }
+    // 原车牌为空 → 默认勾选"无车进场"（存量用户 plateNo 为 null 兼容）
+    noCar.value = !form.plateNo
     // 快照原始值（保存前未修改检测的基准）
     original.name = form.name
     original.phone = form.phone
@@ -54,6 +58,12 @@ onMounted(async () => {
     original.avatar = form.avatar
   }
 })
+
+/** 切换"无车进场"：清除车牌遗留错误提示（勾选态不再校验车牌） */
+function onToggleNoCar() {
+  noCar.value = !noCar.value
+  errors.plateNo = ''
+}
 
 /** 头像上传（PRD §5.2：拍照/相册，上传提示参照参考图） */
 async function onAvatarRead(file) {
@@ -80,8 +90,14 @@ function validate() {
   // 全量回显，须为合法 18 位身份证号
   errors.idCard = ID_CARD_RE.test(form.idCard) ? '' : '请输入正确的18位身份证号'
   errors.company = form.company.trim() ? '' : '请输入单位'
-  // 车牌号非必填：留空通过；填写时按宽松规则校验（前端已过滤非法字符，此处兜底）
-  errors.plateNo = form.plateNo.trim() && !PLATE_RE.test(form.plateNo) ? '车牌号格式不正确' : ''
+  // 车牌号：勾选"无车进场"跳过校验；否则必填（要么填车牌，要么显式勾选无车）
+  if (noCar.value) {
+    errors.plateNo = ''
+  } else if (!form.plateNo.trim()) {
+    errors.plateNo = '请输入车牌号，无车请勾选"无车进场"'
+  } else if (!PLATE_RE.test(form.plateNo)) {
+    errors.plateNo = '车牌号格式不正确'
+  }
   errors.avatar = form.avatar ? '' : '请上传头像照片'
   return (
     !errors.name &&
@@ -94,13 +110,18 @@ function validate() {
 }
 
 // 保存前检查：是否真实修改了内容（按提交口径 trim 归一化比较，Application.vue 同款逻辑）
+// 车牌按提交口径比较：勾选无车提交空串，取消勾选后原值恢复为已填写
+function plateNoForSubmit() {
+  return noCar.value ? '' : form.plateNo.trim()
+}
+
 function isModified() {
   return (
     form.name.trim() !== original.name.trim() ||
     form.phone !== original.phone ||
     form.idCard !== original.idCard ||
     form.company.trim() !== original.company.trim() ||
-    form.plateNo.trim() !== original.plateNo.trim() ||
+    plateNoForSubmit() !== original.plateNo.trim() ||
     form.avatar !== original.avatar
   )
 }
@@ -120,7 +141,7 @@ async function onSubmit() {
     phone: form.phone,
     idCard: form.idCard, // 脱敏值也原样提交，由后端守卫决定是否覆盖
     company: form.company.trim(),
-    plateNo: form.plateNo.trim(), // 非必填，空字符串后端按空处理
+    plateNo: plateNoForSubmit(), // 勾选无车提交空字符串（后端清空原列），否则提交填写值
     avatar: form.avatar,
   }
   try {
@@ -201,15 +222,22 @@ async function onSubmit() {
         required
       />
 
-      <!-- 车牌号（非必填，注册与我的信息页均可填/改） -->
+      <!-- 车牌号（要么填写车牌，要么勾选"无车进场"；勾选后禁用输入并提交空值） -->
       <van-field
         v-model="form.plateNo"
         label="车牌号"
-        placeholder="请输入车牌号（选填）"
+        placeholder="请输入车牌号"
         maxlength="10"
         :formatter="plateFormatter"
         :error-message="errors.plateNo"
+        :disabled="noCar"
+        :required="!noCar"
       />
+      <div class="no-car-row" @click="onToggleNoCar">
+        <van-checkbox v-model="noCar" shape="square" @click.stop />
+        <span class="no-car-label">无车进场（步行/打车/公交等）</span>
+      </div>
+      <p v-if="noCar" class="no-car-tip">未填车牌无法驾车进场</p>
     </div>
 
     <van-button type="primary" block round :loading="submitting" @click="onSubmit">
@@ -242,6 +270,28 @@ async function onSubmit() {
 .field-error {
   font-size: 12px;
   color: #ee0a24;
+  margin-bottom: 8px;
+}
+
+/* 无车进场复选框行（整行可点，checkbox 本体阻止冒泡由 v-model 接管） */
+.no-car-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.no-car-label {
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+/* 勾选后的后果提示（警示橙，区别于普通说明文字） */
+.no-car-tip {
+  font-size: 12px;
+  color: #ff976a;
+  padding: 0 16px;
   margin-bottom: 8px;
 }
 </style>

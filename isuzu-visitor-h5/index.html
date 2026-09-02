@@ -5,6 +5,22 @@
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>五十铃发动机访客预约</title>
+    <!-- IE 兼容入口：Vue3 依赖 ES6 Proxy，IE 全系（8~11）无法运行且无法 polyfill。
+         审批页由邮件链接直达（可能用 IE 打开），重定向到零框架静态兼容页；
+         其余页面均在微信内打开（现代 webview），无需兼容。
+         注意：与 public/approve-legacy/index.html 配套维护（审批页展示变更需两处同步）。 -->
+    <script>
+      ;(function () {
+        var ua = navigator.userAgent
+        // MSIE 覆盖 IE8~10，Trident 覆盖 IE11（UA 不含 MSIE）；IE10+ 不支持条件注释，只能 UA 嗅探
+        if (!/MSIE|Trident/i.test(ua)) return
+        var p = location.pathname.replace(/\/+$/, '')
+        // 命中 /approve（兼容子路径部署）；/approve-legacy 自身不命中，防循环重定向
+        if (p.substring(p.length - 8) === '/approve') {
+          location.replace(p.substring(0, p.length - 8) + '/approve-legacy/' + location.search)
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

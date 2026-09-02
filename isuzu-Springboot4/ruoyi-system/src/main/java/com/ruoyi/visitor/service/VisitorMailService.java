@@ -1,6 +1,8 @@
 package com.ruoyi.visitor.service;
 
 import java.util.List;
+
+import jakarta.mail.internet.InternetAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,8 +89,11 @@ public class VisitorMailService
             String from = mailSender.getUsername();
             if (StringUtils.isNotEmpty(from))
             {
-                helper.setFrom(from);
+//                helper.setFrom(from);
+                InternetAddress internetAddress = new InternetAddress(from,"公共信息服务");
+                helper.setFrom(internetAddress);
             }
+
             helper.setTo(hostEmail);
             // Subject 自动按 RFC 2047 编码为 =?UTF-8?B?...?=
             helper.setSubject("访客访问申请待审批");

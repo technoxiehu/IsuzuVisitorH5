@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>访客预约审批</title>
+<!-- 审批页 IE8 兼容版（与 src/views/Approve.vue 配套维护，展示/状态变更需两处同步）：
+     Vue3 依赖 ES6 Proxy 无法在 IE 运行，本页为零框架纯静态实现——ES3 语法 + 原生 XHR + 原生 JSON。
+     请求走同源相对路径（生产 nginx 已反代 /visitor/ → 8080，无 CORS 问题）。
+     状态机对齐 Approve.vue：loading / ready / done(601 已审批) / revoked(602 已撤销) / invalid / finished。 -->
+<style>
+  /* IE8 安全样式：无 flex / CSS 变量 / rem；色值硬编码对齐 src/styles/global.css 设计 token；
+     border-radius / dashed 边框在 IE8 优雅降级为直角/实线 */
+  * { margin: 0; padding: 0; }
+  body {
+    background: #f5f5f5;
+    color: #333333;
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  }
+  .page { max-width: 480px; _width: 480px; margin: 0 auto; padding: 16px; }
+  .page-title { color: #8c6d3f; font-size: 22px; font-weight: bold; text-align: center; margin: 24px 0; }
+  .page-card { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; }
+
+  /* 申请人头部 */
+  .visitor-header { text-align: center; padding: 8px 0 16px; }
+  .avatar-box { width: 120px; height: 120px; margin: 0 auto 0 auto; }
+  .avatar-box img { width: 120px; height: 120px; border-radius: 60px; border: 1px solid #e5e5e5; display: block; }
+  .avatar-fallback { width: 118px; height: 118px; border-radius: 60px; border: 1px solid #e5e5e5;
+    background: #f5f5f5; color: #999999; font-size: 12px; line-height: 118px; text-align: center; }
+  .visitor-name { font-size: 20px; font-weight: bold; color: #333333; margin-top: 12px; }
+  .visitor-company { font-size: 14px; color: #999999; margin-top: 4px; }
+
+  /* 字段行：float 左右布局（无 flex） */
+  .cell { padding: 10px 0; font-size: 14px; overflow: hidden; zoom: 1; }
+  .cell-label { float: left; color: #333333; }
+  .cell-value { text-align: right; color: #333333; overflow: hidden; zoom: 1; }
+  .cell-value em { font-style: normal; color: #999999; }
+
+  /* 随行人员（与 src/components/CompanionList.vue 样式对齐） */
+  .companions { margin-top: 16px; padding-top: 16px; border-top: 1px dashed #e5e5e5; }
+  .companion-title { font-size: 13px; font-weight: bold; color: #999999; margin-bottom: 6px; }
+  .companion-item { padding: 4px 0; font-size: 13px; overflow: hidden; zoom: 1; }
+  .companion-name { float: left; color: #333333; }
+  .companion-id { float: right; color: #999999; }
+  .companion-empty { font-size: 13px; color: #999999; }
+
+  /* 操作按钮 */
+  .action-row { margin-top: 16px; text-align: center; }
+  .btn { display: inline-block; width: 44%; padding: 10px 0; font-size: 16px;
+    text-align: center; cursor: pointer; border: none; color: #ffffff; }
+  .btn-reject { background: #ee0a24; }
+  .btn-approve { background: #07c160; margin-left: 5%; }
+  .btn[disabled] { cursor: default; opacity: 0.6; filter: alpha(opacity=60); }
+  .err-msg { color: #ee0a24; font-size: 13px; text-align: center; margin-top: 8px; }
+
+  /* 状态页 */
+  .state { text-align: center; padding: 80px 0; display: none; }
+  .state-text { margin-top: 12px; font-size: 16px; color: #333333; }
+  .state .ok { color: #07c160; font-size: 48px; font-family: Arial, sans-serif; }
+  .state .fail { color: #ee0a24; font-size: 48px; font-family: Arial, sans-serif; }
+
+  #detail-block { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1 class="page-title">访客预约审批</h1>
+
+  <!-- 状态：加载中 -->
+  <div class="state" id="state-loading">
+    <div class="state-text" id="loading-text">加载中...</div>
+  </div>
+
+  <!-- 状态：链接无效 -->
+  <div class="state" id="state-invalid">
+    <div class="fail">&#10007;</div>
+    <div class="state-text">链接无效或已过期</div>
+  </div>
+
+  <!-- 状态：已完成审批（601，不渲染操作区） -->
+  <div class="state" id="state-done">
+    <div class="fail">&#10007;</div>
+    <div class="state-text">该申请单已完成审批</div>
+  </div>
+
+  <!-- 状态：申请单已撤销（602） -->
+  <div class="state" id="state-revoked">
+    <div class="fail">&#10007;</div>
+    <div class="state-text">该申请单已撤销</div>
+  </div>
+
+  <!-- 状态：审批完成 -->
+  <div class="state" id="state-finished">
+    <div class="ok">&#10003;</div>
+    <div class="state-text">审批完成</div>
+  </div>
+
+  <!-- 可审批：申请详情 + 操作区（由 JS 渲染） -->
+  <div id="detail-block">
+    <div class="page-card">
+      <div class="visitor-header">
+        <div class="avatar-box">
+          <img id="avatar-img" alt="" style="display:none" />
+          <div id="avatar-fallback" class="avatar-fallback" style="display:none">暂无照片</div>
+        </div>
+        <div class="visitor-name" id="v-name">&mdash;</div>
+        <div class="visitor-company" id="v-company"></div>
+      </div>
+
+      <div class="cell"><span class="cell-label">被访问人</span><span class="cell-value" id="v-host">&mdash;</span></div>
+      <div class="cell"><span class="cell-label">开始日期</span><span class="cell-value" id="v-start">&mdash;</span></div>
+      <div class="cell"><span class="cell-label">结束日期</span><span class="cell-value" id="v-end">&mdash;</span></div>
+      <div class="cell"><span class="cell-label">访问事由</span><span class="cell-value" id="v-reason"></span></div>
+
+      <div class="companions">
+        <div class="companion-title">随行人员</div>
+        <div id="companion-box"></div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button type="button" class="btn btn-reject" id="btn-reject">拒绝</button>
+      <button type="button" class="btn btn-approve" id="btn-approve">同意</button>
+    </div>
+    <div class="err-msg" id="err-msg" style="display:none"></div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  // ---------- 工具（ES3） ----------
+
+  /** 读取 URL query 参数（token 等） */
+  function getQuery(name) {
+    var search = window.location.search.substring(1)
+    if (!search) return ''
+    var pairs = search.split('&')
+    for (var i = 0; i < pairs.length; i++) {
+      var kv = pairs[i].split('=')
+      if (decodeURIComponent(kv[0].replace(/\+/g, ' ')) === name) {
+        return decodeURIComponent((kv[1] || '').replace(/\+/g, ' '))
+      }
+    }
+    return ''
+  }
+
+  /** HTML 转义（innerHTML 拼接防注入） */
+  function escapeHtml(s) {
+    s = (s === null || s === undefined) ? '' : String(s)
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
+  /** 头像 URL 归一化（对齐 src/utils/avatar.js：绝对 URL 取 pathname） */
+  function toAvatarUrl(u) {
+    if (!u) return ''
+    if (/^https?:\/\//i.test(u)) {
+      var m = u.match(/^https?:\/\/[^\/]+(\/[^?#]*)/i)
+      return m ? m[1] : u
+    }
+    return u
+  }
+
+  /** 身份证脱敏（对齐 src/utils/mask.js：前3后4，中间11位*，幂等） */
+  function maskIdCard(id) {
+    if (!id) return ''
+    var s = String(id)
+    if (/^\d{17}[\dX]$/i.test(s)) {
+      return s.replace(/^(\d{3})\d{11}(\d{4})$/i, '$1***********$2')
+    }
+    return s
+  }
+
+  /** XHR 封装：done 回调 (httpStatus, parsedJson| null) */
+  function xhr(method, url, body, onDone) {
+    var x = new XMLHttpRequest()
+    x.open(method, url, true)
+    if (body) x.setRequestHeader('Content-Type', 'application/json')
+    x.onreadystatechange = function () {
+      if (x.readyState === 4) {
+        var res = null
+        try { res = window.JSON.parse(x.responseText) } catch (e) { res = null }
+        onDone(x.status, res)
+      }
+    }
+    x.send(body || null)
+  }
+
+  // ---------- 状态机 ----------
+
+  var STATE_IDS = ['state-loading', 'state-invalid', 'state-done',
+                   'state-revoked', 'state-finished', 'detail-block']
+
+  function showState(id) {
+    for (var i = 0; i < STATE_IDS.length; i++) {
+      document.getElementById(STATE_IDS[i]).style.display = 'none'
+    }
+    if (id) document.getElementById(id).style.display = 'block'
+  }
+
+  // ---------- 详情渲染 ----------
+
+  function renderDetail(app) {
+    // 头像：有 URL 显示图片（加载失败回退占位），无 URL 直接占位
+    var url = toAvatarUrl(app.visitorAvatar)
+    var img = document.getElementById('avatar-img')
+    var fallback = document.getElementById('avatar-fallback')
+    if (url) {
+      img.style.display = 'block'
+      fallback.style.display = 'none'
+      img.onerror = function () {
+        img.style.display = 'none'
+        fallback.style.display = 'block'
+      }
+      img.src = url
+    } else {
+      img.style.display = 'none'
+      fallback.style.display = 'block'
+    }
+
+    document.getElementById('v-name').innerHTML = escapeHtml(app.visitorName || '\u2014')
+    document.getElementById('v-company').innerHTML = escapeHtml(app.visitorCompany || '')
+    document.getElementById('v-host').innerHTML = escapeHtml(app.hostName || '\u2014')
+    document.getElementById('v-start').innerHTML = escapeHtml((app.startTime || '').substring(0, 10) || '\u2014')
+    document.getElementById('v-end').innerHTML = escapeHtml((app.endTime || '').substring(0, 10) || '\u2014')
+    document.getElementById('v-reason').innerHTML = escapeHtml(app.reason || '')
+
+    // 随行人员：接口已脱敏，此处 maskIdCard 再兜底（与 CompanionList.vue 一致）
+    var list = app.companions || []
+    var html = ''
+    for (var i = 0; i < list.length; i++) {
+      html += '<div class="companion-item"><span class="companion-name">'
+        + escapeHtml(list[i].name) + '</span><span class="companion-id">'
+        + escapeHtml(maskIdCard(list[i].idCard)) + '</span></div>'
+    }
+    document.getElementById('companion-box').innerHTML =
+      html || '<div class="companion-empty">无随行人员</div>'
+  }
+
+  // ---------- 审批操作 ----------
+
+  var TOKEN = getQuery('token')
+  var btnReject = document.getElementById('btn-reject')
+  var btnApprove = document.getElementById('btn-approve')
+  var errBox = document.getElementById('err-msg')
+  var submitting = false
+
+  function showErr(msg) {
+    errBox.innerHTML = escapeHtml(msg || '')
+    errBox.style.display = msg ? 'block' : 'none'
+  }
+
+  function setButtons(disabled, activeBtn) {
+    btnReject.disabled = disabled
+    btnApprove.disabled = disabled
+    btnReject.innerHTML = '拒绝'
+    btnApprove.innerHTML = '同意'
+    if (disabled && activeBtn) activeBtn.innerHTML = '提交中...'
+  }
+
+  /** 直接回写（对齐 Approve.vue：无二次确认弹窗） */
+  function doApprove(action, btn) {
+    if (submitting) return
+    submitting = true
+    setButtons(true, btn)
+    showErr('')
+    xhr('POST', '/visitor/approve', window.JSON.stringify({ token: TOKEN, action: action }),
+      function (status, res) {
+        if (res && res.code === 200) {
+          showState('state-finished')
+          return
+        }
+        // 601 重复审批：回到已审批态（对齐 Approve.vue catch 分支）
+        if (res && res.code === 601) {
+          showState('state-done')
+          return
+        }
+        submitting = false
+        setButtons(false)
+        showErr((res && res.msg) || '操作失败，请稍后重试')
+      })
+  }
+
+  // DOM0 级事件绑定（IE8 支持）
+  btnReject.onclick = function () { doApprove('reject', this) }
+  btnApprove.onclick = function () { doApprove('approve', this) }
+
+  // ---------- 初始化 ----------
+
+  if (!TOKEN) {
+    showState('state-invalid')
+    return
+  }
+
+  xhr('GET', '/visitor/approve/detail?token=' + encodeURIComponent(TOKEN), null,
+    function (status, res) {
+      if (res && res.code === 200 && res.data && res.data.application) {
+        renderDetail(res.data.application)
+        showState('detail-block')
+      } else if (res && res.code === 601) {
+        showState('state-done')
+      } else if (res && res.code === 602) {
+        showState('state-revoked')
+      } else {
+        showState('state-invalid')
+      }
+    })
+})()
+</script>
+</body>
+</html>

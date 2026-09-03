@@ -40,13 +40,14 @@ public class VisitorGuardController extends BaseController
 
     /**
      * 门卫有效单据查询（卡片墙数据源；展示当天有效期内审批通过的申请单，权限 visitor:guard:list）
+     * onSiteStatus：在厂状态筛选（v1.12.3）——'0' 在厂内 / '1' 已离厂 / 'none' 待进场 / 缺省全部
      */
     @PreAuthorize("@ss.hasPermi('visitor:guard:list')")
     @GetMapping("/list")
-    public TableDataInfo list(String keyword, String date)
+    public TableDataInfo list(String keyword, String date, String onSiteStatus)
     {
         startPage();
-        List<GuardCardVo> list = visitorGuardService.selectGuardCardList(keyword, date);
+        List<GuardCardVo> list = visitorGuardService.selectGuardCardList(keyword, date, onSiteStatus);
         return getDataTable(list);
     }
 
@@ -67,16 +68,17 @@ public class VisitorGuardController extends BaseController
     }
 
     /**
-     * 入场记录查询（门卫可见全部，按放行时间倒序；权限 visitor:entry:list）
+     * 入场记录查询（门卫可见全部，按事件时间倒序；权限 visitor:entry:list）
      */
     @PreAuthorize("@ss.hasPermi('visitor:entry:list')")
     @GetMapping("/entry/list")
-    public TableDataInfo entryList(String keyword, String beginTime, String endTime)
+    public TableDataInfo entryList(String visitorName, String hostName, String plateNo, String entryType,
+            String beginTime, String endTime)
     {
         startPage();
         Date begin = StringUtils.isNotEmpty(beginTime) ? DateUtils.parseDate(beginTime) : null;
         Date end = StringUtils.isNotEmpty(endTime) ? DateUtils.parseDate(endTime) : null;
-        List<GuardEntryVo> list = visitorGuardService.selectEntryList(keyword, begin, end);
+        List<GuardEntryVo> list = visitorGuardService.selectEntryList(visitorName, hostName, plateNo, entryType, begin, end);
         return getDataTable(list);
     }
 
@@ -86,11 +88,12 @@ public class VisitorGuardController extends BaseController
     @PreAuthorize("@ss.hasPermi('visitor:entry:export')")
     @Log(title = "入场记录", businessType = BusinessType.EXPORT)
     @PostMapping("/entry/export")
-    public void export(HttpServletResponse response, String keyword, String beginTime, String endTime)
+    public void export(HttpServletResponse response, String visitorName, String hostName, String plateNo, String entryType,
+            String beginTime, String endTime)
     {
         Date begin = StringUtils.isNotEmpty(beginTime) ? DateUtils.parseDate(beginTime) : null;
         Date end = StringUtils.isNotEmpty(endTime) ? DateUtils.parseDate(endTime) : null;
-        List<GuardEntryVo> list = visitorGuardService.selectEntryExportList(keyword, begin, end);
+        List<GuardEntryVo> list = visitorGuardService.selectEntryExportList(visitorName, hostName, plateNo, entryType, begin, end);
         ExcelUtil<GuardEntryVo> util = new ExcelUtil<GuardEntryVo>(GuardEntryVo.class);
         util.exportExcel(response, list, "入场记录数据");
     }

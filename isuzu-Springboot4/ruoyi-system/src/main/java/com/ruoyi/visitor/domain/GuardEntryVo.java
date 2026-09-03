@@ -9,7 +9,8 @@ import com.ruoyi.common.annotation.Excel;
  *
  * 列表接口（§3.15）手机号/身份证号返回前已脱敏；导出接口（§3.16）为全量明文（审计口径）。
  * 申请单已撤销/删除的记录仍展示（历史事实，审计留存）。
- * v1.12 新增 entryType（0进场 1离厂），导出经 readConverterExp 转中文。
+ * v1.12 新增 entryType（0进场 1离厂），导出经 readConverterExp 转中文；
+ * v1.12.1 导出列对齐列表页与契约 §3.16：显式 sort 固定列序，「放行门卫」→「操作门卫」、「放行时间」→「事件时间」。
  * @Excel 注解仅用于导出，不影响 JSON 序列化。
  *
  * @author isuzu
@@ -22,51 +23,51 @@ public class GuardEntryVo
     /** 申请单号 */
     private String applicationId;
 
-    /** 事件类型(0进场 1离厂；v1.12 新增，存量数据'0'视为进场) */
-    @Excel(name = "类型", readConverterExp = "0=进场,1=离厂")
-    private String entryType;
-
     /** 访客姓名 */
-    @Excel(name = "访客姓名")
+    @Excel(name = "访客姓名", sort = 1)
     private String visitorName;
 
     /** 访客单位 */
-    @Excel(name = "单位")
+    @Excel(name = "单位", sort = 2)
     private String visitorCompany;
 
     /** 访客手机号(列表脱敏，导出明文) */
-    @Excel(name = "手机号", cellType = Excel.ColumnType.TEXT)
+    @Excel(name = "手机号", sort = 3, cellType = Excel.ColumnType.TEXT)
     private String visitorPhone;
 
     /** 访客身份证号(列表脱敏，导出明文) */
-    @Excel(name = "身份证号", cellType = Excel.ColumnType.TEXT)
+    @Excel(name = "身份证号", sort = 4, cellType = Excel.ColumnType.TEXT)
     private String visitorIdCard;
 
     /** 车牌号(无则 null) */
-    @Excel(name = "车牌号", defaultValue = "-")
+    @Excel(name = "车牌号", sort = 5, defaultValue = "-")
     private String plateNo;
 
     /** 被访人姓名 */
-    @Excel(name = "被访人")
+    @Excel(name = "被访人", sort = 6)
     private String hostName;
 
     /** 访问开始时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Excel(name = "访问开始时间", dateFormat = "yyyy-MM-dd HH:mm:ss", width = 20)
+    @Excel(name = "访问开始时间", sort = 7, dateFormat = "yyyy-MM-dd HH:mm:ss", width = 20)
     private Date startTime;
 
     /** 访问结束时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Excel(name = "访问结束时间", dateFormat = "yyyy-MM-dd HH:mm:ss", width = 20)
+    @Excel(name = "访问结束时间", sort = 8, dateFormat = "yyyy-MM-dd HH:mm:ss", width = 20)
     private Date endTime;
 
-    /** 放行门卫姓名 */
-    @Excel(name = "放行门卫")
+    /** 事件类型(0进场 1离厂；v1.12 新增，存量数据'0'视为进场) */
+    @Excel(name = "类型", sort = 9, readConverterExp = "0=进场,1=离厂")
+    private String entryType;
+
+    /** 操作门卫姓名 */
+    @Excel(name = "操作门卫", sort = 10)
     private String operatorName;
 
-    /** 放行时间 */
+    /** 事件时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Excel(name = "放行时间", dateFormat = "yyyy-MM-dd HH:mm:ss", width = 20)
+    @Excel(name = "事件时间", sort = 11, dateFormat = "yyyy-MM-dd HH:mm:ss", width = 20)
     private Date entryTime;
 
     public String getEntryId()
@@ -87,16 +88,6 @@ public class GuardEntryVo
     public void setApplicationId(String applicationId)
     {
         this.applicationId = applicationId;
-    }
-
-    public String getEntryType()
-    {
-        return entryType;
-    }
-
-    public void setEntryType(String entryType)
-    {
-        this.entryType = entryType;
     }
 
     public String getVisitorName()
@@ -177,6 +168,16 @@ public class GuardEntryVo
     public void setEndTime(Date endTime)
     {
         this.endTime = endTime;
+    }
+
+    public String getEntryType()
+    {
+        return entryType;
+    }
+
+    public void setEntryType(String entryType)
+    {
+        this.entryType = entryType;
     }
 
     public String getOperatorName()

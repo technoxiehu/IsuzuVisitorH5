@@ -80,6 +80,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 or v.plate_no like concat('%', #{keyword}, '%')
             )
         </if>
+        <!-- 在厂状态筛选（v1.12.3）：复用全历史最新事件子查询；'none' 为无任何进出事件（待进场） -->
+        <if test="onSiteStatus != null and onSiteStatus == 'none'">
+            and not exists (select 1 from visitor_entry e4 where e4.application_id = va.application_id)
+        </if>
+        <if test="onSiteStatus != null and onSiteStatus != '' and onSiteStatus != 'none'">
+            and #{onSiteStatus} = (select e5.entry_type from visitor_entry e5
+                                    where e5.application_id = va.application_id
+                                    order by e5.create_time desc limit 1)
+        </if>
         order by va.create_time desc
     </select>
 
@@ -97,8 +106,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit 1
     </select>
 
-    <!-- 入场记录查询（§3.15）：JOIN 申请单/访客表取展示字段；
-         申请单已撤销/删除的记录仍展示（历史事实，审计留存），故不过滤 va.del_flag -->
+    <!-- 入场记录查询（§3.15，v1.12.2 查询条件拆分更换）：JOIN 申请单/访客表取展示字段；
+         申请单已撤销/删除的记录仍展示（历史事实，审计留存），故不过滤 va.del_flag；
+         条件：访客姓名/被访人/车牌号模糊 + 类型精确 + 事件时间范围 -->
     <select id="selectEntryList" resultMap="GuardEntryResult">
         select ve.entry_id, ve.application_id, ve.entry_type, ve.operator_name, ve.create_time as entry_time,
                v.name as visitor_name, v.company as visitor_company, v.phone as visitor_phone,
@@ -108,12 +118,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         left join visitor_application va on ve.application_id = va.application_id
         left join visitor v on va.visitor_id = v.visitor_id
         where 1 = 1
-        <if test="keyword != null and keyword != ''">
-            and (
-                v.name like concat('%', #{keyword}, '%')
-                or v.phone like concat('%', #{keyword}, '%')
-                or ve.operator_name like concat('%', #{keyword}, '%')
-            )
+        <if test="visitorName != null and visitorName != ''">
+            and v.name like concat('%', #{visitorName}, '%')
+        </if>
+        <if test="hostName != null and hostName != ''">
+            and va.host_name like concat('%', #{hostName}, '%')
+        </if>
+        <if test="plateNo != null and plateNo != ''">
+            and v.plate_no like concat('%', #{plateNo}, '%')
+        </if>
+        <if test="entryType != null and entryType != ''">
+            and ve.entry_type = #{entryType}
         </if>
         <if test="beginTime != null">
             and ve.create_time &gt;= #{beginTime}

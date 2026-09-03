@@ -1,6 +1,6 @@
 <template>
   <div class="guard-wall" :class="{ 'guard-wall--full': fullscreen }">
-    <!-- 工具栏：搜索 + 统计 + 自动刷新状态 -->
+    <!-- 工具栏：搜索 + 在厂状态筛选 + 统计 + 自动刷新状态 -->
     <div class="guard-wall__toolbar">
       <div class="guard-wall__search">
         <el-input
@@ -15,6 +15,18 @@
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
+        <el-select
+          v-model="onSiteStatus"
+          placeholder="全部状态"
+          clearable
+          :teleported="false"
+          class="guard-wall__status-filter"
+          @change="handleSearch"
+        >
+          <el-option label="在厂内" value="0" />
+          <el-option label="已离厂" value="1" />
+          <el-option label="待进场" value="none" />
+        </el-select>
         <el-button type="primary" icon="Search" @click="handleSearch">搜索</el-button>
       </div>
       <div class="guard-wall__meta">
@@ -119,6 +131,8 @@ const cards = ref([])
 const loading = ref(false)
 const refreshing = ref(false)
 const keyword = ref('')
+// 在厂状态筛选（v1.12.3）：'0' 在厂内 / '1' 已离厂 / 'none' 待进场 / '' 全部（默认）
+const onSiteStatus = ref('')
 const countdown = ref(REFRESH_INTERVAL)
 // 进行中的进出请求标识（`${applicationId}:${entryType}`，防同卡片双按钮交叉 loading）
 const releasingKey = ref('')
@@ -160,7 +174,8 @@ async function getList(silent = false) {
     const res = await listGuardCard({
       pageNum: 1,
       pageSize: 200,
-      keyword: keyword.value || undefined
+      keyword: keyword.value || undefined,
+      onSiteStatus: onSiteStatus.value || undefined
     })
     cards.value = (res && res.rows) || []
   } finally {
@@ -233,9 +248,26 @@ defineExpose({ getList })
   max-width: 560px;
 }
 
-.guard-wall--full .guard-wall__search-input :deep(.el-input__inner) {
+.guard-wall--full .guard-wall__search-input :deep(.el-input__wrapper) {
   height: 44px;
   font-size: 16px;
+}
+
+.guard-wall--full .guard-wall__status-filter :deep(.el-select__wrapper) {
+  height: 44px;
+  font-size: 16px;
+}
+
+.guard-wall--full .guard-wall__search > .el-button {
+  height: 44px;
+  padding: 0 20px;
+  font-size: 16px;
+}
+
+/* 在厂状态筛选下拉（v1.12.3） */
+.guard-wall__status-filter {
+  width: 128px;
+  flex-shrink: 0;
 }
 
 .guard-wall__meta {

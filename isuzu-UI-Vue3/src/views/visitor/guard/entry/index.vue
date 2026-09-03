@@ -1,16 +1,40 @@
 <template>
   <div class="app-container">
     <el-form ref="queryRef" :model="queryParams" :inline="true" class="entry-query">
-      <el-form-item label="关键字" prop="keyword">
+      <el-form-item label="访客姓名" prop="visitorName">
         <el-input
-          v-model="queryParams.keyword"
-          placeholder="访客姓名 / 手机号 / 门卫姓名"
+          v-model="queryParams.visitorName"
+          placeholder="请输入访客姓名"
           clearable
-          style="width: 240px"
+          style="width: 160px"
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="放行时间" prop="dateRange">
+      <el-form-item label="被访人" prop="hostName">
+        <el-input
+          v-model="queryParams.hostName"
+          placeholder="请输入被访人姓名"
+          clearable
+          style="width: 160px"
+          @keyup.enter="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="车牌号" prop="plateNo">
+        <el-input
+          v-model="queryParams.plateNo"
+          placeholder="请输入车牌号"
+          clearable
+          style="width: 140px"
+          @keyup.enter="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="类型" prop="entryType">
+        <el-select v-model="queryParams.entryType" placeholder="全部" clearable style="width: 110px">
+          <el-option label="进场" value="0" />
+          <el-option label="离厂" value="1" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="事件时间" prop="dateRange">
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -79,7 +103,10 @@ const dateRange = ref([])
 const queryParams = reactive({
   pageNum: 1,
   pageSize: 10,
-  keyword: undefined,
+  visitorName: undefined,
+  hostName: undefined,
+  plateNo: undefined,
+  entryType: undefined,
   beginTime: undefined,
   endTime: undefined
 })
@@ -136,7 +163,10 @@ function syncDateRange() {
 function handleExport() {
   syncDateRange()
   proxy.download('visitor/guard/entry/export', {
-    keyword: queryParams.keyword,
+    visitorName: queryParams.visitorName,
+    hostName: queryParams.hostName,
+    plateNo: queryParams.plateNo,
+    entryType: queryParams.entryType,
     beginTime: queryParams.beginTime,
     endTime: queryParams.endTime
   }, `入场记录_${new Date().getTime()}.xlsx`)

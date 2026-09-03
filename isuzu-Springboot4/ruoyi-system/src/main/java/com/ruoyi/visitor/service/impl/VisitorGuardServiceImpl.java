@@ -44,28 +44,24 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
     /**
      * 查询门卫有效单据卡片（§3.13）：
      * 审批通过(status='1')且未撤销(del_flag='0')且访问窗口覆盖指定日期（日期粒度，当天缺省）；
-     * 手机号/身份证号脱敏；随行人员名单批量带出（身份证脱敏）；entryCount/lastEntryTime 为当日放行统计
+     * v1.12.3 起手机号/身份证号（含随行人员）明文返回（门卫对照实体证件口径，与入场记录导出一致）；
+     * entryCount/lastEntryTime 为当日进场统计；onSiteStatus 在厂状态筛选（'0'/'1'/'none'，缺省全部）
      */
     @Override
-    public List<GuardCardVo> selectGuardCardList(String keyword, String date)
+    public List<GuardCardVo> selectGuardCardList(String keyword, String date, String onSiteStatus)
     {
         // 日期粒度窗口：date 缺省取应用服务器当天；区间 [date 00:00:00, 次日 00:00:00)
         String day = StringUtils.isEmpty(date) ? DateUtils.getDate() : date;
         Date dateStart = DateUtils.parseDate(day);
         Date nextDayStart = DateUtils.addDays(dateStart, 1);
 
-        List<GuardCardVo> cards = visitorEntryMapper.selectGuardCardList(keyword, dateStart, nextDayStart);
+        List<GuardCardVo> cards = visitorEntryMapper.selectGuardCardList(keyword, dateStart, nextDayStart, onSiteStatus);
         if (cards == null || cards.isEmpty())
         {
             return cards;
         }
-        // 主访客手机号/身份证号脱敏（接口返回口径，见 docs/03_接口契约.md §3.13）
-        for (GuardCardVo c : cards)
-        {
-            c.setVisitorPhone(maskPhone(c.getVisitorPhone()));
-            c.setVisitorIdCard(IdCardUtils.mask(c.getVisitorIdCard()));
-        }
-        // 随行人员名单批量带出并按申请单分组（身份证脱敏；无名单置空数组，字段恒存在）
+        // v1.12.3：主访客手机号/身份证号明文返回（门卫对照实体证件口径，与入场记录导出一致），不再脱敏
+        // 随行人员名单批量带出并按申请单分组（身份证同样明文；无名单置空数组，字段恒存在）
         List<String> applicationIds = cards.stream().map(GuardCardVo::getApplicationId).collect(Collectors.toList());
         Map<String, List<VisitorCompanion>> companionMap = new HashMap<>();
         List<VisitorCompanion> companions = visitorCompanionMapper.selectListByApplicationIds(applicationIds);
@@ -73,7 +69,6 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
         {
             for (VisitorCompanion c : companions)
             {
-                c.setIdCard(IdCardUtils.mask(c.getIdCard()));
                 companionMap.computeIfAbsent(c.getApplicationId(), k -> new ArrayList<>()).add(c);
             }
         }
@@ -144,12 +139,13 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
     }
 
     /**
-     * 入场记录查询（§3.15）：门卫可见全部，按放行时间倒序；展示字段脱敏
+     * 入场记录查询（§3.15）：门卫可见全部，按事件时间倒序；展示字段脱敏
      */
     @Override
-    public List<GuardEntryVo> selectEntryList(String keyword, Date beginTime, Date endTime)
+    public List<GuardEntryVo> selectEntryList(String visitorName, String hostName, String plateNo, String entryType,
+            Date beginTime, Date endTime)
     {
-        List<GuardEntryVo> list = visitorEntryMapper.selectEntryList(keyword, beginTime, endTime);
+        List<GuardEntryVo> list = visitorEntryMapper.selectEntryList(visitorName, hostName, plateNo, entryType, beginTime, endTime);
         if (list != null)
         {
             for (GuardEntryVo e : list)
@@ -165,9 +161,10 @@ public class VisitorGuardServiceImpl implements IVisitorGuardService
      * 入场记录导出（§3.16）：与列表查询同条件、同排序，手机号/身份证不脱敏（全量明文，审计口径）
      */
     @Override
-    public List<GuardEntryVo> selectEntryExportList(String keyword, Date beginTime, Date endTime)
+    public List<GuardEntryVo> selectEntryExportList(String visitorName, String hostName, String plateNo, String entryType,
+            Date beginTime, Date endTime)
     {
-        return visitorEntryMapper.selectEntryList(keyword, beginTime, endTime);
+        return visitorEntryMapper.selectEntryList(visitorName, hostName, plateNo, entryType, beginTime, endTime);
     }
 
     /** 手机号脱敏：前 3 + **** + 后 4（幂等，含 * 或非 11 位原样返回） */

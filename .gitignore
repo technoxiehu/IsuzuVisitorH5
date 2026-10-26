@@ -10,7 +10,7 @@
 
 # 识图配置（vision.js 使用，含 API Key，勿提交）
 /.env
-/.codegraph
+/.codegraph/
 docs/poster-design/发动机产品介绍_20260707.pptx
 
 *.class

@@ -166,7 +166,9 @@ public class NeteaseUserSyncService
             user.setDeptId(deptId);
             user.setStatus(userStatus);
             user.setUpdateBy(SYNC_USER);
-            userService.updateUser(user);
+            // 直接走 mapper 更新本体字段：service 层 updateUser 会先删后插关联表，
+            // 同步未设置 roleIds/postIds，会把该用户已有的角色/岗位关联清空
+            userMapper.updateUser(user);
 
             existing.setThirdJson(accountJson);
             existing.setSyncStatus(1);
